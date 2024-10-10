@@ -629,6 +629,8 @@ namespace OpenXmlPowerTools
 
     public static class WordprocessingMLUtil
     {
+        public static readonly string AttributeValueSeparator = " ";
+
         private static HashSet<string> UnknownFonts = new HashSet<string>();
         private static HashSet<string> KnownFamilies = null;
 
@@ -788,6 +790,26 @@ namespace OpenXmlPowerTools
             W.sdtContent
         };
 
+        private static XAttribute CoalesceAttributeValuesForElements(IEnumerable<XElement> elements, XName attrName) {
+            // iterate thought elements, collect attribute values, parse values to split by commas, concatenate all values and get distinct values
+            var attrValues = elements
+                .Select(el => el.Attribute(attrName)?.Value)
+                .Where(val => val != null)
+                .SelectMany(val => val.Split(AttributeValueSeparator.ToCharArray()))
+                .Distinct();
+            return attrValues.Any() ? new XAttribute(attrName, string.Join(AttributeValueSeparator, attrValues)) : null;
+        }
+
+        private static IEnumerable<XAttribute> CoalesceAttributesForRunElements(IEnumerable<XElement> elements) {
+            var source1Attr = CoalesceAttributeValuesForElements(elements, PtOpenXml.SourceIndex1);
+            var source2Attr = CoalesceAttributeValuesForElements(elements, PtOpenXml.SourceIndex2);
+
+            // replace the given attributes with coalesced values
+            return elements.First().Attributes()
+                .Where(attr => attr.Name != PtOpenXml.SourceIndex1 && attr.Name != PtOpenXml.SourceIndex2)
+                .Concat(new[] { source1Attr, source2Attr }.Where(attr => attr != null));
+        }
+
         public static XElement CoalesceAdjacentRunsWithIdenticalFormatting(XElement runContainer)
         {
             const string dontConsolidate = "DontConsolidate";
@@ -924,37 +946,37 @@ namespace OpenXmlPowerTools
                             IEnumerable<IEnumerable<XAttribute>> statusAtt =
                                 g.Select(r => r.Descendants(W.t).Take(1).Attributes(PtOpenXml.Status));
                             return new XElement(W.r,
-                                g.First().Attributes(),
+                                CoalesceAttributesForRunElements(g),
                                 g.First().Elements(W.rPr),
                                 new XElement(W.t, statusAtt, xs, textValue));
                         }
 
                         if (g.First().Element(W.instrText) != null)
                             return new XElement(W.r,
-                                g.First().Attributes(),
+                                CoalesceAttributesForRunElements(g),
                                 g.First().Elements(W.rPr),
                                 new XElement(W.instrText, xs, textValue));
                     }
 
                     if (g.First().Name == W.ins)
                     {
-                        XElement firstR = g.First().Element(W.r);
+                        var runs = g.Elements(W.r);
                         return new XElement(W.ins,
                             g.First().Attributes(),
                             new XElement(W.r,
-                                firstR?.Attributes(),
-                                g.First().Elements(W.r).Elements(W.rPr),
+                                CoalesceAttributesForRunElements(runs),
+                                runs.First().Element(W.rPr),
                                 new XElement(W.t, xs, textValue)));
                     }
 
                     if (g.First().Name == W.del)
                     {
-                        XElement firstR = g.First().Element(W.r);
+                        var runs = g.Elements(W.r);
                         return new XElement(W.del,
                             g.First().Attributes(),
                             new XElement(W.r,
-                                firstR?.Attributes(),
-                                g.First().Elements(W.r).Elements(W.rPr),
+                                CoalesceAttributesForRunElements(runs),
+                                runs.First().Element(W.rPr),
                                 new XElement(W.delText, xs, textValue)));
                     }
                     return g;
@@ -984,107 +1006,107 @@ namespace OpenXmlPowerTools
 
         private static Dictionary<XName, int> Order_settings = new Dictionary<XName, int>
         {
-            { W.writeProtection, 10}, 
-            { W.view, 20}, 
-            { W.zoom, 30}, 
-            { W.removePersonalInformation, 40}, 
-            { W.removeDateAndTime, 50}, 
-            { W.doNotDisplayPageBoundaries, 60}, 
-            { W.displayBackgroundShape, 70}, 
-            { W.printPostScriptOverText, 80}, 
-            { W.printFractionalCharacterWidth, 90}, 
-            { W.printFormsData, 100}, 
-            { W.embedTrueTypeFonts, 110}, 
-            { W.embedSystemFonts, 120}, 
-            { W.saveSubsetFonts, 130}, 
-            { W.saveFormsData, 140}, 
-            { W.mirrorMargins, 150}, 
-            { W.alignBordersAndEdges, 160}, 
-            { W.bordersDoNotSurroundHeader, 170}, 
-            { W.bordersDoNotSurroundFooter, 180}, 
-            { W.gutterAtTop, 190}, 
-            { W.hideSpellingErrors, 200}, 
-            { W.hideGrammaticalErrors, 210}, 
-            { W.activeWritingStyle, 220}, 
-            { W.proofState, 230}, 
-            { W.formsDesign, 240}, 
-            { W.attachedTemplate, 250}, 
-            { W.linkStyles, 260}, 
-            { W.stylePaneFormatFilter, 270}, 
-            { W.stylePaneSortMethod, 280}, 
-            { W.documentType, 290}, 
-            { W.mailMerge, 300}, 
-            { W.revisionView, 310}, 
-            { W.trackRevisions, 320}, 
-            { W.doNotTrackMoves, 330}, 
-            { W.doNotTrackFormatting, 340}, 
-            { W.documentProtection, 350}, 
-            { W.autoFormatOverride, 360}, 
-            { W.styleLockTheme, 370}, 
-            { W.styleLockQFSet, 380}, 
-            { W.defaultTabStop, 390}, 
-            { W.autoHyphenation, 400}, 
-            { W.consecutiveHyphenLimit, 410}, 
-            { W.hyphenationZone, 420}, 
-            { W.doNotHyphenateCaps, 430}, 
-            { W.showEnvelope, 440}, 
-            { W.summaryLength, 450}, 
-            { W.clickAndTypeStyle, 460}, 
-            { W.defaultTableStyle, 470}, 
-            { W.evenAndOddHeaders, 480}, 
-            { W.bookFoldRevPrinting, 490}, 
-            { W.bookFoldPrinting, 500}, 
-            { W.bookFoldPrintingSheets, 510}, 
-            { W.drawingGridHorizontalSpacing, 520}, 
-            { W.drawingGridVerticalSpacing, 530}, 
-            { W.displayHorizontalDrawingGridEvery, 540}, 
-            { W.displayVerticalDrawingGridEvery, 550}, 
-            { W.doNotUseMarginsForDrawingGridOrigin, 560}, 
-            { W.drawingGridHorizontalOrigin, 570}, 
-            { W.drawingGridVerticalOrigin, 580}, 
-            { W.doNotShadeFormData, 590}, 
-            { W.noPunctuationKerning, 600}, 
-            { W.characterSpacingControl, 610}, 
-            { W.printTwoOnOne, 620}, 
-            { W.strictFirstAndLastChars, 630}, 
-            { W.noLineBreaksAfter, 640}, 
-            { W.noLineBreaksBefore, 650}, 
-            { W.savePreviewPicture, 660}, 
-            { W.doNotValidateAgainstSchema, 670}, 
-            { W.saveInvalidXml, 680}, 
-            { W.ignoreMixedContent, 690}, 
-            { W.alwaysShowPlaceholderText, 700}, 
-            { W.doNotDemarcateInvalidXml, 710}, 
-            { W.saveXmlDataOnly, 720}, 
-            { W.useXSLTWhenSaving, 730}, 
-            { W.saveThroughXslt, 740}, 
-            { W.showXMLTags, 750}, 
-            { W.alwaysMergeEmptyNamespace, 760}, 
-            { W.updateFields, 770}, 
-            { W.footnotePr, 780}, 
-            { W.endnotePr, 790}, 
-            { W.compat, 800}, 
-            { W.docVars, 810}, 
-            { W.rsids, 820}, 
-            { M.mathPr, 830}, 
-            { W.attachedSchema, 840}, 
-            { W.themeFontLang, 850}, 
-            { W.clrSchemeMapping, 860}, 
-            { W.doNotIncludeSubdocsInStats, 870}, 
-            { W.doNotAutoCompressPictures, 880}, 
-            { W.forceUpgrade, 890}, 
-            //{W.captions, 900}, 
-            { W.readModeInkLockDown, 910}, 
-            { W.smartTagType, 920}, 
-            //{W.sl:schemaLibrary, 930}, 
-            { W.doNotEmbedSmartTags, 940}, 
-            { W.decimalSymbol, 950}, 
-            { W.listSeparator, 960}, 
+            { W.writeProtection, 10},
+            { W.view, 20},
+            { W.zoom, 30},
+            { W.removePersonalInformation, 40},
+            { W.removeDateAndTime, 50},
+            { W.doNotDisplayPageBoundaries, 60},
+            { W.displayBackgroundShape, 70},
+            { W.printPostScriptOverText, 80},
+            { W.printFractionalCharacterWidth, 90},
+            { W.printFormsData, 100},
+            { W.embedTrueTypeFonts, 110},
+            { W.embedSystemFonts, 120},
+            { W.saveSubsetFonts, 130},
+            { W.saveFormsData, 140},
+            { W.mirrorMargins, 150},
+            { W.alignBordersAndEdges, 160},
+            { W.bordersDoNotSurroundHeader, 170},
+            { W.bordersDoNotSurroundFooter, 180},
+            { W.gutterAtTop, 190},
+            { W.hideSpellingErrors, 200},
+            { W.hideGrammaticalErrors, 210},
+            { W.activeWritingStyle, 220},
+            { W.proofState, 230},
+            { W.formsDesign, 240},
+            { W.attachedTemplate, 250},
+            { W.linkStyles, 260},
+            { W.stylePaneFormatFilter, 270},
+            { W.stylePaneSortMethod, 280},
+            { W.documentType, 290},
+            { W.mailMerge, 300},
+            { W.revisionView, 310},
+            { W.trackRevisions, 320},
+            { W.doNotTrackMoves, 330},
+            { W.doNotTrackFormatting, 340},
+            { W.documentProtection, 350},
+            { W.autoFormatOverride, 360},
+            { W.styleLockTheme, 370},
+            { W.styleLockQFSet, 380},
+            { W.defaultTabStop, 390},
+            { W.autoHyphenation, 400},
+            { W.consecutiveHyphenLimit, 410},
+            { W.hyphenationZone, 420},
+            { W.doNotHyphenateCaps, 430},
+            { W.showEnvelope, 440},
+            { W.summaryLength, 450},
+            { W.clickAndTypeStyle, 460},
+            { W.defaultTableStyle, 470},
+            { W.evenAndOddHeaders, 480},
+            { W.bookFoldRevPrinting, 490},
+            { W.bookFoldPrinting, 500},
+            { W.bookFoldPrintingSheets, 510},
+            { W.drawingGridHorizontalSpacing, 520},
+            { W.drawingGridVerticalSpacing, 530},
+            { W.displayHorizontalDrawingGridEvery, 540},
+            { W.displayVerticalDrawingGridEvery, 550},
+            { W.doNotUseMarginsForDrawingGridOrigin, 560},
+            { W.drawingGridHorizontalOrigin, 570},
+            { W.drawingGridVerticalOrigin, 580},
+            { W.doNotShadeFormData, 590},
+            { W.noPunctuationKerning, 600},
+            { W.characterSpacingControl, 610},
+            { W.printTwoOnOne, 620},
+            { W.strictFirstAndLastChars, 630},
+            { W.noLineBreaksAfter, 640},
+            { W.noLineBreaksBefore, 650},
+            { W.savePreviewPicture, 660},
+            { W.doNotValidateAgainstSchema, 670},
+            { W.saveInvalidXml, 680},
+            { W.ignoreMixedContent, 690},
+            { W.alwaysShowPlaceholderText, 700},
+            { W.doNotDemarcateInvalidXml, 710},
+            { W.saveXmlDataOnly, 720},
+            { W.useXSLTWhenSaving, 730},
+            { W.saveThroughXslt, 740},
+            { W.showXMLTags, 750},
+            { W.alwaysMergeEmptyNamespace, 760},
+            { W.updateFields, 770},
+            { W.footnotePr, 780},
+            { W.endnotePr, 790},
+            { W.compat, 800},
+            { W.docVars, 810},
+            { W.rsids, 820},
+            { M.mathPr, 830},
+            { W.attachedSchema, 840},
+            { W.themeFontLang, 850},
+            { W.clrSchemeMapping, 860},
+            { W.doNotIncludeSubdocsInStats, 870},
+            { W.doNotAutoCompressPictures, 880},
+            { W.forceUpgrade, 890},
+            //{W.captions, 900},
+            { W.readModeInkLockDown, 910},
+            { W.smartTagType, 920},
+            //{W.sl:schemaLibrary, 930},
+            { W.doNotEmbedSmartTags, 940},
+            { W.decimalSymbol, 950},
+            { W.listSeparator, 960},
         };
 
 #if false
 // from the schema in the standard
-        
+
 writeProtection
 view
 zoom

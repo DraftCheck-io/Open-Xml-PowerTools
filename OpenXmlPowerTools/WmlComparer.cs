@@ -24,11 +24,11 @@ using OpenXmlPowerTools;
 /// Currently, the unid is set at the beginning of the algorithm.  It is used by the code that establishes correlation based on first rejecting
 /// tracked revisions, then correlating paragraphs/tables.  It is requred for this algorithm - after finding a correlated sequence in the document with rejected
 /// revisions, it uses the unid to find the same paragraph in the document without rejected revisions, then sets the correlated sha1 hash in that document.
-/// 
+///
 /// But then when accepting tracked revisions, for certain paragraphs (where there are deleted paragraph marks) it is going to lose the unids.  But this isn't a
 /// problem because when paragraph marks are deleted, the correlation is definitely no longer possible.  Any paragraphs that are in a range of paragraphs that
 /// are coalesced can't be correlated to paragraphs in the other document via their hash.  At that point we no longer care what their unids are.
-/// 
+///
 /// But after that it is only used to reconstruct the tree.  It is also used in the debugging code that
 /// prints the various correlated sequences and comparison units - this is display for debugging purposes only.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,9 +38,9 @@ using OpenXmlPowerTools;
 /// inserted into the new document, or set as equal.  At this point, we identify a paragraph as a sequential list of content atoms, terminated by a paragraph mark.
 /// This entire list will for a single paragraph, regardless of whether the paragraph is a child of the body, or if the paragraph is in a cell in a table, or if
 /// the paragraph is in a text box.  The list of ancestors, from the paragraph to the root of the XML tree will be the same for all content atoms in the paragraph.
-/// 
+///
 /// Therefore:
-/// 
+///
 /// Iterate through the list of content atoms backwards.  When the loop sees a paragraph mark, it gets the ancestor unids from the paragraph mark to the top of the
 /// tree, and sets this as the same for all content atoms in the paragraph.  For descendants of the paragraph mark, it doesn't really matter if content is put into
 /// separate runs or what not.  We don't need to be concerned about what the unids are for descendants of the paragraph.
@@ -1279,7 +1279,7 @@ namespace OpenXmlPowerTools
                                     table,
                                     emptyParagraph,
                                 };
-								
+
                 var dummyElement = new XElement("dummy", content);
 
                 foreach (var rev in dummyElement.Descendants().Where(d => d.Attribute(W.author) != null))
@@ -2137,7 +2137,7 @@ namespace OpenXmlPowerTools
 
         // it is possible, per the algorithm, for the algorithm to find that the paragraph mark for a single paragraph has been
         // inserted and deleted.  If the algorithm sets them to equal, then sometimes it will equate paragraph marks that should
-        // not be equated.  
+        // not be equated.
         private static void ConjoinDeletedInsertedParagraphMarks(MainDocumentPart mainDocumentPart, XDocument newXDoc)
         {
             ConjoinMultipleParagraphMarks(newXDoc);
@@ -2870,32 +2870,32 @@ namespace OpenXmlPowerTools
         /// - For atoms within a text box, the depth will be 3: Paragraph / txbxContent / Paragraph
         /// - For atoms within a table in a text box, the depth will be 5:  Paragraph / txbxContent / Table / Row / Cell / Paragraph
         /// In any case, we figure out the maximum depth.
-        /// 
+        ///
         /// Then we iterate through the list of content atoms backwards.  We do this n times, where n is the maximum depth.
-        /// 
+        ///
         /// At each level, we find a paragraph mark, and working backwards, we set the guids in the hierarchy so that the content will be assembled together correctly.
-        /// 
+        ///
         /// For each iteration, we only set unids at the level that we are working at.
-        /// 
+        ///
         /// So first we will set all unids at level 1.  When we find a paragraph mark, we get the unid for that level, and then working backwards, until we find another
         /// paragraph mark, we set all unids at level 1 to the same unid as level 1 of the paragraph mark.
-        /// 
+        ///
         /// Then we set all unids at level 2.  When we find a paragraph mark, we get the unid for that level, and then working backwards, until we find another paragraph
         /// mark, we set all unids at level 2 to the same unid as level 2 of the paragraph mark.  At some point, we will find a paragraph mark with no level 2.  This is
         /// not a problem.  We stop setting anything until we find another paragraph mark that has a level 2, at which point we resume setting values at level 2.
-        /// 
+        ///
         /// Same process for level 3, and so on, until we have processed to the maximum depth of the hierarchy.
-        /// 
+        ///
         /// At the end of this process, we will be able to do the coalsce recurse algorithm, and the content atom list will be put back together into a beautiful tree,
         /// where every element is correctly positioned in the hierarchy.
-        /// 
+        ///
         /// This should also properly assemble the test where just the paragraph marks have been deleted for a range of paragraphs.
         ///
         /// There is an interesting thought - it is possible that I have set two runs of text that were initially in the same paragraph, but then after
         /// processing, they match up to text in different paragraphs.  Therefore this will not work.  We need to actually keep a list of reconstructed ancestor
         /// Unids, because the same paragraph would get set to two different IDs - two ComparisonUnitAtoms need to be in separate paragraphs in the reconstructed
         /// document, but their ancestors actually point to the same paragraph.
-        /// 
+        ///
         /// Fix this in the algorithm, and also keep the appropriate list in ComparisonUnitAtom class.
 
         private static void AssembleAncestorUnidsInOrderToRebuildXmlTreeProperly(List<ComparisonUnitAtom> comparisonUnitAtomList)
@@ -4586,8 +4586,8 @@ namespace OpenXmlPowerTools
                         if (Status == CorrelationStatus.Equal) {
                             // get the list if the all unique Index attributes of the allAncestorBeingConstructedBefore
                             var allAncestorBeingConstructedBeforeIndexes = allAncestorBeingConstructedBefore.Select(a => a.Attribute(PtOpenXml.Index).Value).Distinct();
-                            newRunAttributes = newRunAttributes.Concat(new[] { 
-                                new XAttribute(PtOpenXml.SourceIndex1, string.Join(",", allAncestorBeingConstructedBeforeIndexes)),
+                            newRunAttributes = newRunAttributes.Concat(new[] {
+                                new XAttribute(PtOpenXml.SourceIndex1, string.Join(WordprocessingMLUtil.AttributeValueSeparator, allAncestorBeingConstructedBeforeIndexes)),
                                 new XAttribute(PtOpenXml.SourceIndex2, ancestorBeingConstructed.Attribute(PtOpenXml.Index).Value)
                             });
                         } else if (Status == CorrelationStatus.Inserted) {
@@ -5305,7 +5305,7 @@ namespace OpenXmlPowerTools
             var cul1 = unknown.ComparisonUnitArray1;
             var cul2 = unknown.ComparisonUnitArray2;
 
-            // first thing to do - if we have an unknown with zero length on left or right side, create appropriate 
+            // first thing to do - if we have an unknown with zero length on left or right side, create appropriate
             // this is a code optimization that enables easier processing of cases elsewhere.
             if (cul1.Length > 0 && cul2.Length == 0)
             {
