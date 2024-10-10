@@ -5874,6 +5874,12 @@ listSeparator
         public static XName ListItemRun = pt + "ListItemRun";
 
         public static XName HtmlToWmlCssWidth = pt + "HtmlToWmlCssWidth";
+
+        public static XName Index = pt + "Index";
+
+        public static XName SourceIndex1 = pt + "SourceIndex1";
+
+        public static XName SourceIndex2 = pt + "SourceIndex2";
     }
 
     public static class Xhtml

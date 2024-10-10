@@ -365,6 +365,7 @@ namespace OpenXmlPowerTools
                     MarkupSimplifier.SimplifyMarkup(wDoc, msSettings);
                     ChangeFootnoteEndnoteReferencesToUniqueRange(wDoc, startingIdForFootnotesEndnotes);
                     AddUnidsToMarkupInContentParts(wDoc);
+                    AddRunIndexesToMarkupInContentParts(wDoc);
                     AddFootnotesEndnotesParts(wDoc);
                     FillInEmptyFootnotesEndnotes(wDoc);
                     DetachExternalData(wDoc);
@@ -480,7 +481,7 @@ namespace OpenXmlPowerTools
         {
             var mdp = wDoc.MainDocumentPart.GetXDocument();
             AssignUnidToAllElements(mdp.Root);
-            IgnorePt14Namespace(mdp.Root);
+           IgnorePt14Namespace(mdp.Root);
             wDoc.MainDocumentPart.PutXDocument();
 
             if (wDoc.MainDocumentPart.FootnotesPart != null)
@@ -495,6 +496,30 @@ namespace OpenXmlPowerTools
             {
                 var p = wDoc.MainDocumentPart.EndnotesPart.GetXDocument();
                 AssignUnidToAllElements(p.Root);
+                IgnorePt14Namespace(p.Root);
+                wDoc.MainDocumentPart.EndnotesPart.PutXDocument();
+            }
+        }
+
+        private static void AddRunIndexesToMarkupInContentParts(WordprocessingDocument wDoc)
+        {
+            var mdp = wDoc.MainDocumentPart.GetXDocument();
+            AssignIndexesToAllRunElements(mdp.Root);
+            IgnorePt14Namespace(mdp.Root);
+            wDoc.MainDocumentPart.PutXDocument();
+
+            if (wDoc.MainDocumentPart.FootnotesPart != null)
+            {
+                var p = wDoc.MainDocumentPart.FootnotesPart.GetXDocument();
+                AssignIndexesToAllRunElements(p.Root);
+                IgnorePt14Namespace(p.Root);
+                wDoc.MainDocumentPart.FootnotesPart.PutXDocument();
+            }
+
+            if (wDoc.MainDocumentPart.EndnotesPart != null)
+            {
+                var p = wDoc.MainDocumentPart.EndnotesPart.GetXDocument();
+                AssignIndexesToAllRunElements(p.Root);
                 IgnorePt14Namespace(p.Root);
                 wDoc.MainDocumentPart.EndnotesPart.PutXDocument();
             }
@@ -4479,7 +4504,10 @@ namespace OpenXmlPowerTools
             var elementList = grouped
                 .Select(g =>
                 {
+                    var Status = g.First().CorrelationStatus;
                     var ancestorBeingConstructed = g.First().AncestorElements[level]; // these will all be the same, by definition
+                    // select all original ancestor elements at this level
+                    var allAncestorBeingConstructedBefore = g.Select(ca => ca.ComparisonUnitAtomBefore?.AncestorElements[level]).ToList();
 
                     // need to group by corr stat
                     var groupedChildren = g
@@ -4553,8 +4581,27 @@ namespace OpenXmlPowerTools
                             .ToList();
 
                         XElement rPr = ancestorBeingConstructed.Element(W.rPr);
+
+                        var newRunAttributes = ancestorBeingConstructed.Attributes().Where(a => a.Name.Namespace != PtOpenXml.pt);
+                        if (Status == CorrelationStatus.Equal) {
+                            // get the list if the all unique Index attributes of the allAncestorBeingConstructedBefore
+                            var allAncestorBeingConstructedBeforeIndexes = allAncestorBeingConstructedBefore.Select(a => a.Attribute(PtOpenXml.Index).Value).Distinct();
+                            newRunAttributes = newRunAttributes.Concat(new[] { 
+                                new XAttribute(PtOpenXml.SourceIndex1, string.Join(",", allAncestorBeingConstructedBeforeIndexes)),
+                                new XAttribute(PtOpenXml.SourceIndex2, ancestorBeingConstructed.Attribute(PtOpenXml.Index).Value)
+                            });
+                        } else if (Status == CorrelationStatus.Inserted) {
+                            newRunAttributes = newRunAttributes.Concat(new [] {
+                                new XAttribute(PtOpenXml.SourceIndex2, ancestorBeingConstructed.Attribute(PtOpenXml.Index).Value)
+                            });
+                        } else if (Status == CorrelationStatus.Deleted) {
+                            newRunAttributes = newRunAttributes.Concat(new [] {
+                                new XAttribute(PtOpenXml.SourceIndex1, ancestorBeingConstructed.Attribute(PtOpenXml.Index).Value)
+                            });
+                        }
+
                         var newRun = new XElement(W.r,
-                            ancestorBeingConstructed.Attributes().Where(a => a.Name.Namespace != PtOpenXml.pt),
+                            newRunAttributes,
                             rPr,
                             newChildElements);
                         return newRun;
@@ -7073,6 +7120,23 @@ namespace OpenXmlPowerTools
                     string unid = Guid.NewGuid().ToString().Replace("-", "");
                     var newAtt = new XAttribute(PtOpenXml.Unid, unid);
                     d.Add(newAtt);
+                }
+            }
+        }
+
+        private static void AssignIndexesToAllRunElements(XElement contentParent)
+        {
+            var content = contentParent.Descendants();
+            var rCount = 0;
+            foreach (var d in content)
+            {
+                if (d.Name == W.r)
+                {
+                    if (d.Attribute(PtOpenXml.Index) == null) {
+                        var newAttr = new XAttribute(PtOpenXml.Index, rCount.ToString());
+                        d.Add(newAttr);
+                    }
+                    rCount++;
                 }
             }
         }
