@@ -39,6 +39,7 @@ namespace OpenXmlPowerTools
         public bool RemoveSoftHyphens;
         public bool RemoveWebHidden;
         public bool ReplaceTabsWithSpaces;
+        public bool OptimizeRuns;
     }
 
     [SuppressMessage("ReSharper", "InconsistentNaming")]
@@ -553,17 +554,19 @@ namespace OpenXmlPowerTools
                     settings.RemoveHyperlinks)
                     newRoot = (XElement) SimplifyMarkupTransform(newRoot, settings, parameters);
 
-                // Remove runs and run properties that have become empty due to previous transforms.
-                newRoot = (XElement) RemoveEmptyRunsAndRunPropertiesTransform(newRoot);
+                if (settings.OptimizeRuns) {
+                    // Remove runs and run properties that have become empty due to previous transforms.
+                    newRoot = (XElement) RemoveEmptyRunsAndRunPropertiesTransform(newRoot);
 
-                // Merge adjacent runs that have identical run properties.
-                newRoot = (XElement) MergeAdjacentRunsTransform(newRoot);
+                    // Merge adjacent runs that have identical run properties.
+                    newRoot = (XElement) MergeAdjacentRunsTransform(newRoot);
 
-                // Merge adjacent instrText elements.
-                newRoot = (XElement) MergeAdjacentInstrText(newRoot);
+                    // Merge adjacent instrText elements.
+                    newRoot = (XElement) MergeAdjacentInstrText(newRoot);
 
-                // Separate run children into separate runs
-                newRoot = (XElement) SeparateRunChildrenIntoSeparateRuns(newRoot);
+                    // Separate run children into separate runs
+                    newRoot = (XElement) SeparateRunChildrenIntoSeparateRuns(newRoot);
+                }
 
                 if (XNode.DeepEquals(prevNewRoot.Root, newRoot))
                     break;

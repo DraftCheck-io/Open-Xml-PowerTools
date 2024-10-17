@@ -97,8 +97,8 @@ namespace OpenXmlPowerTools
             bool preProcessMarkupInOriginal)
         {
             if (preProcessMarkupInOriginal)
-                source1 = PreProcessMarkup(source1, settings.StartingIdForFootnotesEndnotes + 1000);
-            source2 = PreProcessMarkup(source2, settings.StartingIdForFootnotesEndnotes + 2000);
+                source1 = PreProcessMarkup(source1, settings.StartingIdForFootnotesEndnotes + 1000, false);
+            source2 = PreProcessMarkup(source2, settings.StartingIdForFootnotesEndnotes + 2000, false);
 
             if (s_SaveIntermediateFilesForDebugging && settings.DebugTempFileDi != null)
             {
@@ -310,7 +310,7 @@ namespace OpenXmlPowerTools
             }
         }
 
-        private static WmlDocument PreProcessMarkup(WmlDocument source, int startingIdForFootnotesEndnotes)
+        private static WmlDocument PreProcessMarkup(WmlDocument source, int startingIdForFootnotesEndnotes, bool optimizeRuns = true)
         {
             // open and close to get rid of MC content
             using (MemoryStream ms = new MemoryStream())
@@ -361,6 +361,7 @@ namespace OpenXmlPowerTools
                         RemoveSmartTags = true,
                         RemoveSoftHyphens = true,
                         RemoveHyperlinks = true,
+                        OptimizeRuns = optimizeRuns,
                     };
                     MarkupSimplifier.SimplifyMarkup(wDoc, msSettings);
                     ChangeFootnoteEndnoteReferencesToUniqueRange(wDoc, startingIdForFootnotesEndnotes);
