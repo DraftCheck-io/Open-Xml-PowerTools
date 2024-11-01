@@ -790,6 +790,7 @@ namespace OpenXmlPowerTools
             W.sdtContent
         };
 
+        // DraftCheck
         private static XAttribute CoalesceAttributeValuesForElements(IEnumerable<XElement> elements, XName attrName) {
             // iterate thought elements, collect attribute values, parse values to split by commas, concatenate all values and get distinct values
             var attrValues = elements
@@ -800,6 +801,7 @@ namespace OpenXmlPowerTools
             return attrValues.Any() ? new XAttribute(attrName, string.Join(AttributeValueSeparator, attrValues)) : null;
         }
 
+        // DraftCheck
         private static IEnumerable<XAttribute> CoalesceAttributesForRunElements(IEnumerable<XElement> elements) {
             var source1Attr = CoalesceAttributeValuesForElements(elements, PtOpenXml.SourceIndex1);
             var source2Attr = CoalesceAttributeValuesForElements(elements, PtOpenXml.SourceIndex2);
@@ -5897,11 +5899,11 @@ listSeparator
 
         public static XName HtmlToWmlCssWidth = pt + "HtmlToWmlCssWidth";
 
+        // DraftCheck
         public static XName Index = pt + "Index";
-
         public static XName SourceIndex1 = pt + "SourceIndex1";
-
         public static XName SourceIndex2 = pt + "SourceIndex2";
+        public static XName UnidBackup = pt + "UnidBackup";
     }
 
     public static class Xhtml
