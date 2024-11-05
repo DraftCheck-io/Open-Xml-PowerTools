@@ -2204,8 +2204,6 @@ namespace OpenXmlPowerTools
                     var id = s_MaxId++;
                     moves
                         .First()
-                        .Ancestors(W.p)
-                        .First()
                         .AddBeforeSelf(new XElement(
                             moveRangeStartName,
                             new XAttribute(W.id, id),
@@ -2215,8 +2213,6 @@ namespace OpenXmlPowerTools
                         ));
                     moves
                         .Last()
-                        .Ancestors(W.p)
-                        .First()
                         .AddAfterSelf(new XElement(
                             moveRangeEndName,
                             new XAttribute(W.id, id)
