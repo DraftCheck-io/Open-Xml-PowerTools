@@ -4713,6 +4713,8 @@ namespace OpenXmlPowerTools
                                 key += "|" + CorrelationStatus.Equal.ToString();
                             else
                                 key += "|" + gc.CorrelationStatus.ToString();
+                            if (gc.MoveUnid != null)
+                                key += "|" + gc.MoveUnid;
                             return key;
                         })
                         .ToList();
