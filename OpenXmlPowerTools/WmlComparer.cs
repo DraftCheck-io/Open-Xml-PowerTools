@@ -7349,11 +7349,11 @@ namespace OpenXmlPowerTools
     public abstract class ComparisonUnit
     {
         public List<ComparisonUnit> Contents;
-        public string SHA1Hash { get; set; }
-        public CorrelationStatus CorrelationStatus { get; set; }
+        public string SHA1Hash;
+        public CorrelationStatus CorrelationStatus;
 
         // DraftCheck
-        public string MoveUnid { get; set; }
+        public string MoveUnid;
 
         public IEnumerable<ComparisonUnit> Descendants()
         {
