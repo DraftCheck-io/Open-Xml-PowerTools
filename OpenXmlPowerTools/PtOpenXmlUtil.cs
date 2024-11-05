@@ -878,11 +878,8 @@ namespace OpenXmlPowerTools
                                 return dontConsolidate;
 
                             XElement rPr = ce.Element(W.rPr);
-                            var rPrCopy = new XElement(rPr);
-                            if (rPrCopy != null)
-                            {
-                                RemovePowerToolsMarkup(rPrCopy, true);
-                            }
+                            XElement rPrCopy = (rPr != null) ? RemovePowerToolsMarkup(new XElement(rPr)) : null;
+
                             string rPrString = rPrCopy != null ? rPrCopy.ToString(SaveOptions.None) : string.Empty;
 
                             if (ce.Element(W.t) != null)
@@ -1040,7 +1037,7 @@ namespace OpenXmlPowerTools
             return runContainerWithConsolidatedRuns;
         }
 
-        public static void RemovePowerToolsMarkup(XElement element, bool removeUnid = false) 
+        public static XElement RemovePowerToolsMarkup(XElement element, bool removeUnid = false) 
         {
             element
                 .DescendantsAndSelf()
@@ -1048,6 +1045,7 @@ namespace OpenXmlPowerTools
                 .Where(a => a.Name.Namespace == PtOpenXml.pt)
                 .Where(a => removeUnid || a.Name != PtOpenXml.Unid)
                 .Remove();
+            return element;
         }
 
         private static Dictionary<XName, int> Order_settings = new Dictionary<XName, int>
