@@ -816,6 +816,54 @@ namespace OpenXmlPowerTools
         {
             const string dontConsolidate = "DontConsolidate";
 
+            // do not consolidate, if w:ins includes w:del (for example)
+            List<XName> dontConsolidateRunContainersWithChildren = new List<XName> 
+            {
+                W.ins,
+                W.del,
+                W.moveFrom,
+                W.moveTo
+            };
+
+            string getGroupKeyForAdjacentRunContainers2(XElement rc, string prefix, bool useId = false)
+            {
+                XAttribute dateAtt = rc.Attribute(W.date);
+
+                string author = (string) rc.Attribute(W.author) ?? string.Empty;
+                string date = dateAtt != null
+                    ? ((DateTime) dateAtt).ToString("s")
+                    : string.Empty;
+                string id = useId ? (string)rc.Attribute(W.id) ?? string.Empty : string.Empty;
+                string moveUnid = (string)rc.Attribute(PtOpenXml.MoveUnid) ?? string.Empty;
+
+                return prefix +
+                    author +
+                    date +
+                    id +
+                    moveUnid +
+                    rc.Elements(W.r)
+                        .Elements(W.rPr)
+                        .Select(rPr => 
+                        {
+                            var rPrCopy = new XElement(rPr);
+                            RemovePowerToolsMarkup(rPrCopy, true);
+                            return rPrCopy.ToString(SaveOptions.None);
+                        })
+                        .StringConcatenate();
+            }
+
+            string getGroupKeyForAdjacentRunContainers(XElement rc, string prefix, XName textName, bool useId = false) 
+            {
+                if (rc.Elements().Where(e => dontConsolidateRunContainersWithChildren.Contains(e.Name)).Any())
+                    return dontConsolidate;
+
+                if ((rc.Elements(W.r).Elements().Count(e => e.Name != W.rPr) != 1) ||
+                    !rc.Elements().Elements(textName).Any())
+                    return dontConsolidate;
+
+                return getGroupKeyForAdjacentRunContainers2(rc, prefix, useId);
+            }
+
             IEnumerable<IGrouping<string, XElement>> groupedAdjacentRunsWithIdenticalFormatting =
                 runContainer
                     .Elements()
@@ -830,7 +878,12 @@ namespace OpenXmlPowerTools
                                 return dontConsolidate;
 
                             XElement rPr = ce.Element(W.rPr);
-                            string rPrString = rPr != null ? rPr.ToString(SaveOptions.None) : string.Empty;
+                            var rPrCopy = new XElement(rPr);
+                            if (rPrCopy != null)
+                            {
+                                RemovePowerToolsMarkup(rPrCopy, true);
+                            }
+                            string rPrString = rPrCopy != null ? rPrCopy.ToString(SaveOptions.None) : string.Empty;
 
                             if (ce.Element(W.t) != null)
                                 return "Wt" + rPrString;
@@ -843,9 +896,9 @@ namespace OpenXmlPowerTools
 
                         if (ce.Name == W.ins)
                         {
+                            /*
                             if (ce.Elements(W.del).Any())
                             {
-                                return dontConsolidate;
 #if false
                                 // for w:ins/w:del/w:r/w:delText
                                 if ((ce.Elements(W.del).Elements(W.r).Elements().Count(e => e.Name != W.rPr) != 1) ||
@@ -865,7 +918,7 @@ namespace OpenXmlPowerTools
                                     ? ((DateTime) dateDel).ToString("s")
                                     : string.Empty;
 
-                                return "Wins" +
+                                return "Wins2" +
                                        authorIns +
                                        dateInsString +
                                        authorDel +
@@ -877,53 +930,49 @@ namespace OpenXmlPowerTools
                                            .StringConcatenate();
 #endif
                             }
+                            */
 
                             // w:ins/w:r/w:t
-                            if ((ce.Elements().Elements().Count(e => e.Name != W.rPr) != 1) ||
-                                !ce.Elements().Elements(W.t).Any())
-                                return dontConsolidate;
-
-                            XAttribute dateIns2 = ce.Attribute(W.date);
-
-                            string authorIns2 = (string) ce.Attribute(W.author) ?? string.Empty;
-                            string dateInsString2 = dateIns2 != null
-                                ? ((DateTime) dateIns2).ToString("s")
-                                : string.Empty;
-
-                            string idIns2 = (string)ce.Attribute(W.id);
-
-                            return "Wins2" +
-                                   authorIns2 +
-                                   dateInsString2 +
-                                   idIns2 +
-                                   ce.Elements()
-                                       .Elements(W.rPr)
-                                       .Select(rPr => rPr.ToString(SaveOptions.None))
-                                       .StringConcatenate();
+                            return getGroupKeyForAdjacentRunContainers(ce, "Wins", W.t);
                         }
 
                         if (ce.Name == W.del)
                         {
-                            if ((ce.Elements(W.r).Elements().Count(e => e.Name != W.rPr) != 1) ||
-                                !ce.Elements().Elements(W.delText).Any())
-                                return dontConsolidate;
+                            return getGroupKeyForAdjacentRunContainers(ce, "Wdel", W.delText);
+                        }
 
-                            XAttribute dateDel2 = ce.Attribute(W.date);
+                        if (ce.Name == W.moveFrom)
+                        {
+                            return getGroupKeyForAdjacentRunContainers(ce, "WmoveFrom", W.t);
+                        }
 
-                            string authorDel2 = (string) ce.Attribute(W.author) ?? string.Empty;
-                            string dateDelString2 = dateDel2 != null ? ((DateTime) dateDel2).ToString("s") : string.Empty;
 
-                            return "Wdel" +
-                                   authorDel2 +
-                                   dateDelString2 +
-                                   ce.Elements(W.r)
-                                       .Elements(W.rPr)
-                                       .Select(rPr => rPr.ToString(SaveOptions.None))
-                                       .StringConcatenate();
+                        if (ce.Name == W.moveTo)
+                        {
+                            return getGroupKeyForAdjacentRunContainers(ce, "WmoveTo", W.t);
                         }
 
                         return dontConsolidate;
                     });
+
+            XElement consolidateGroupedRuns(IGrouping<string, XElement> g, XName textName, string textValue, XAttribute textSpace = null, IEnumerable<IEnumerable<XAttribute>> statusAtt = null)
+            {
+                return new XElement(W.r,
+                    CoalesceAttributesForRunElements(g),
+                    g.First().Elements(W.rPr),
+                    new XElement(W.t, statusAtt, textSpace, textValue));
+            }
+
+            XElement consolidateGroupedRunsInsideContainer(IGrouping<string, XElement> g, XName containerName, XName textName, string textValue, XAttribute textSpace = null)
+            {
+                var runs = g.Elements(W.r);
+                return new XElement(containerName,
+                    g.First().Attributes(),
+                    new XElement(W.r,
+                        CoalesceAttributesForRunElements(runs),
+                        runs.First().Element(W.rPr),
+                        new XElement(textName, textSpace, textValue)));
+            }
 
             var runContainerWithConsolidatedRuns = new XElement(runContainer.Name,
                 runContainer.Attributes(),
@@ -947,40 +996,25 @@ namespace OpenXmlPowerTools
                         {
                             IEnumerable<IEnumerable<XAttribute>> statusAtt =
                                 g.Select(r => r.Descendants(W.t).Take(1).Attributes(PtOpenXml.Status));
-                            return new XElement(W.r,
-                                CoalesceAttributesForRunElements(g),
-                                g.First().Elements(W.rPr),
-                                new XElement(W.t, statusAtt, xs, textValue));
+                            return consolidateGroupedRuns(g, W.t, textValue, xs, statusAtt);
                         }
 
                         if (g.First().Element(W.instrText) != null)
-                            return new XElement(W.r,
-                                CoalesceAttributesForRunElements(g),
-                                g.First().Elements(W.rPr),
-                                new XElement(W.instrText, xs, textValue));
+                            return consolidateGroupedRuns(g, W.instrText, textValue, xs);
                     }
 
                     if (g.First().Name == W.ins)
-                    {
-                        var runs = g.Elements(W.r);
-                        return new XElement(W.ins,
-                            g.First().Attributes(),
-                            new XElement(W.r,
-                                CoalesceAttributesForRunElements(runs),
-                                runs.First().Element(W.rPr),
-                                new XElement(W.t, xs, textValue)));
-                    }
+                        return consolidateGroupedRunsInsideContainer(g, W.ins, W.t, textValue, xs);
 
                     if (g.First().Name == W.del)
-                    {
-                        var runs = g.Elements(W.r);
-                        return new XElement(W.del,
-                            g.First().Attributes(),
-                            new XElement(W.r,
-                                CoalesceAttributesForRunElements(runs),
-                                runs.First().Element(W.rPr),
-                                new XElement(W.delText, xs, textValue)));
-                    }
+                        return consolidateGroupedRunsInsideContainer(g, W.del, W.delText, textValue, xs);
+
+                    if (g.First().Name == W.moveFrom)
+                        return consolidateGroupedRunsInsideContainer(g, W.moveFrom, W.t, textValue, xs);
+
+                    if (g.First().Name == W.moveTo)
+                        return consolidateGroupedRunsInsideContainer(g, W.moveTo, W.t, textValue, xs);
+
                     return g;
                 }));
 
@@ -1004,6 +1038,16 @@ namespace OpenXmlPowerTools
             }
 
             return runContainerWithConsolidatedRuns;
+        }
+
+        public static void RemovePowerToolsMarkup(XElement element, bool removeUnid = false) 
+        {
+            element
+                .DescendantsAndSelf()
+                .Attributes()
+                .Where(a => a.Name.Namespace == PtOpenXml.pt)
+                .Where(a => removeUnid || a.Name != PtOpenXml.Unid)
+                .Remove();
         }
 
         private static Dictionary<XName, int> Order_settings = new Dictionary<XName, int>
@@ -5904,6 +5948,7 @@ listSeparator
         public static XName SourceIndex1 = pt + "SourceIndex1";
         public static XName SourceIndex2 = pt + "SourceIndex2";
         public static XName UnidBackup = pt + "UnidBackup";
+        public static XName MoveUnid = pt + "MoveUnid";
     }
 
     public static class Xhtml

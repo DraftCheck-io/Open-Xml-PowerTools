@@ -2188,48 +2188,104 @@ namespace OpenXmlPowerTools
             return node;
         }
 
+        private static void MarkMoveFromAndMoveToRanges(XNode node, WmlComparerSettings settings)
+        {
+            void markMoveRanges(XElement c, XName moveName, XName moveRangeStartName, XName moveRangeEndName = null)
+            {
+                var groupedMoves = c
+                    .Descendants()
+                    .Where(e => e.Name == moveName && !e.Ancestors(W.pPr).Any())
+                    .GroupBy(e => (string)e.Attribute(PtOpenXml.MoveUnid));
+
+                foreach (var gm in groupedMoves)
+                {
+                    var name = gm.Key.Substring(0, 8);
+                    var moves = gm.ToList();
+                    var id = s_MaxId++;
+                    moves
+                        .First()
+                        .Ancestors(W.p)
+                        .First()
+                        .AddBeforeSelf(new XElement(
+                            moveRangeStartName,
+                            new XAttribute(W.id, id),
+                            new XAttribute(W.name, name),
+                            new XAttribute(W.author, settings.AuthorForRevisions),
+                            new XAttribute(W.date, settings.DateTimeForRevisions)
+                        ));
+                    moves
+                        .Last()
+                        .Ancestors(W.p)
+                        .First()
+                        .AddAfterSelf(new XElement(
+                            moveRangeEndName,
+                            new XAttribute(W.id, id)
+                        ));
+                }
+            }
+
+            XElement container = node as XElement;
+            markMoveRanges(container, W.moveFrom, W.moveFromRangeStart, W.moveFromRangeEnd);
+            markMoveRanges(container, W.moveTo, W.moveToRangeStart, W.moveToRangeEnd);
+        } 
+
         private static void MarkContentAsDeletedOrInserted(XDocument newXDoc, WmlComparerSettings settings)
         {
             var newRoot = MarkContentAsDeletedOrInsertedTransform(newXDoc.Root, settings);
+            MarkMoveFromAndMoveToRanges(newRoot, settings);
             newXDoc.Root.ReplaceWith(newRoot);
         }
 
-        private static object MarkContentAsDeletedOrInsertedTransform(XNode node, WmlComparerSettings settings)
+        private static XNode MarkContentAsDeletedOrInsertedTransform(XNode node, WmlComparerSettings settings)
         {
+            List<string> getRunTextsAttributeValues(XElement run, XName attrName) 
+            {
+                return run
+                    .DescendantsTrimmed(W.txbxContent)
+                    .Where(d => d.Name == W.t || d.Name == W.delText || AllowableRunChildren.Contains(d.Name))
+                    .Attributes(attrName)
+                    .Select(a => (string)a)
+                    .Distinct()
+                    .ToList();
+            }
+
             XElement element = node as XElement;
             if (element != null)
             {
                 if (element.Name == W.r)
                 {
-                    var statusList = element
-                        .DescendantsTrimmed(W.txbxContent)
-                        .Where(d => d.Name == W.t || d.Name == W.delText || AllowableRunChildren.Contains(d.Name))
-                        .Attributes(PtOpenXml.Status)
-                        .Select(a => (string)a)
-                        .Distinct()
-                        .ToList();
+                    var statusList = getRunTextsAttributeValues(element, PtOpenXml.Status);
                     if (statusList.Count() > 1)
                         throw new OpenXmlPowerToolsException("Internal error - have both deleted and inserted text elements in the same run.");
                     if (statusList.Count() == 0)
                         return new XElement(W.r,
                             element.Attributes(),
                             element.Nodes().Select(n => MarkContentAsDeletedOrInsertedTransform(n, settings)));
+
+                    // DraftCheck
+                    var moveUnidsList = getRunTextsAttributeValues(element, PtOpenXml.MoveUnid);
+                    if (moveUnidsList.Count() > 1)
+                        throw new OpenXmlPowerToolsException("Internal error - have more than one different move ranges in the same run.");
+                    var moved = moveUnidsList.Count() == 1;
+
                     if (statusList.First() == "Deleted")
                     {
-                        return new XElement(W.del,
+                        return new XElement(moved ? W.moveFrom : W.del,
                             new XAttribute(W.author, settings.AuthorForRevisions),
                             new XAttribute(W.id, s_MaxId++),
                             new XAttribute(W.date, settings.DateTimeForRevisions),
+                            moved ? new XAttribute(PtOpenXml.MoveUnid, moveUnidsList.First()) : null,
                             new XElement(W.r,
                             element.Attributes(),
                             element.Nodes().Select(n => MarkContentAsDeletedOrInsertedTransform(n, settings))));
                     }
                     else if (statusList.First() == "Inserted")
                     {
-                        return new XElement(W.ins,
+                        return new XElement(moved ? W.moveTo : W.ins,
                             new XAttribute(W.author, settings.AuthorForRevisions),
                             new XAttribute(W.id, s_MaxId++),
                             new XAttribute(W.date, settings.DateTimeForRevisions),
+                            moved ? new XAttribute(PtOpenXml.MoveUnid, moveUnidsList.First()) : null,
                             new XElement(W.r,
                             element.Attributes(),
                             element.Nodes().Select(n => MarkContentAsDeletedOrInsertedTransform(n, settings))));
@@ -2243,13 +2299,23 @@ namespace OpenXmlPowerTools
                         return new XElement(W.pPr,
                             element.Attributes(),
                             element.Nodes().Select(n => MarkContentAsDeletedOrInsertedTransform(n, settings)));
+                    
+                    // find all runs inside current paragraph
+                    var paragraphRuns = element
+                        .Ancestors(W.p)
+                        .Descendants(W.r);
+                    var runsMoveUnids = paragraphRuns
+                        .SelectMany(r => getRunTextsAttributeValues(r, PtOpenXml.MoveUnid))
+                        .ToList();
+                    var moved = runsMoveUnids.Count() == paragraphRuns.Count();
+
                     var pPr = new XElement(element);
                     if (status == "Deleted")
                     {
                         XElement rPr = pPr.Element(W.rPr);
                         if (rPr == null)
                             rPr = new XElement(W.rPr);
-                        rPr.Add(new XElement(W.del,
+                        rPr.Add(new XElement(moved ? W.moveFrom : W.del,
                             new XAttribute(W.author, settings.AuthorForRevisions),
                             new XAttribute(W.id, s_MaxId++),
                             new XAttribute(W.date, settings.DateTimeForRevisions)));
@@ -2263,7 +2329,7 @@ namespace OpenXmlPowerTools
                         XElement rPr = pPr.Element(W.rPr);
                         if (rPr == null)
                             rPr = new XElement(W.rPr);
-                        rPr.Add(new XElement(W.ins,
+                        rPr.Add(new XElement(moved ? W.moveTo : W.ins,
                             new XAttribute(W.author, settings.AuthorForRevisions),
                             new XAttribute(W.id, s_MaxId++),
                             new XAttribute(W.date, settings.DateTimeForRevisions)));
@@ -3407,9 +3473,6 @@ namespace OpenXmlPowerTools
                                 AssignMoveUnidsToComparisonUnits(cs.ComparisonUnitArray2, moveUid);
                             }
                         }
-                        // Console.WriteLine("Deleted: {0}", GetComparisonUnitText(deletedCU));
-                        // Console.WriteLine("Inserted: {0}", GetComparisonUnitText(insertedCU));
-                        // Console.WriteLine("---");
                     }
                 }
             }
@@ -3624,27 +3687,18 @@ namespace OpenXmlPowerTools
 
         private static void RemoveExistingPowerToolsMarkup(WordprocessingDocument wDoc)
         {
-            wDoc.MainDocumentPart
-                .GetXDocument()
-                .Root
-                .Descendants()
-                .Attributes()
-                .Where(a => a.Name.Namespace == PtOpenXml.pt)
-                .Where(a => a.Name != PtOpenXml.Unid)
-                .Remove();
+            WordprocessingMLUtil.RemovePowerToolsMarkup(
+                wDoc.MainDocumentPart
+                    .GetXDocument()
+                    .Root
+            );
             wDoc.MainDocumentPart.PutXDocument();
 
             var fnPart = wDoc.MainDocumentPart.FootnotesPart;
             if (fnPart != null)
             {
                 var fnXDoc = fnPart.GetXDocument();
-                fnXDoc
-                    .Root
-                    .Descendants()
-                    .Attributes()
-                    .Where(a => a.Name.Namespace == PtOpenXml.pt)
-                    .Where(a => a.Name != PtOpenXml.Unid)
-                    .Remove();
+                WordprocessingMLUtil.RemovePowerToolsMarkup(fnXDoc.Root);
                 fnPart.PutXDocument();
             }
 
@@ -3652,13 +3706,7 @@ namespace OpenXmlPowerTools
             if (enPart != null)
             {
                 var enXDoc = enPart.GetXDocument();
-                enXDoc
-                    .Root
-                    .Descendants()
-                    .Attributes()
-                    .Where(a => a.Name.Namespace == PtOpenXml.pt)
-                    .Where(a => a.Name != PtOpenXml.Unid)
-                    .Remove();
+                WordprocessingMLUtil.RemovePowerToolsMarkup(enXDoc.Root);
                 enPart.PutXDocument();
             }
         }
@@ -4759,20 +4807,25 @@ namespace OpenXmlPowerTools
                                 var textOfTextElement = gc.Select(gce => gce.ContentElement.Value).StringConcatenate();
                                 var del = gc.First().CorrelationStatus == CorrelationStatus.Deleted;
                                 var ins = gc.First().CorrelationStatus == CorrelationStatus.Inserted;
+                                var MoveUnid = gc.First().MoveUnid;
+                                XElement el;
                                 if (del)
-                                    return (object)(new XElement(W.delText,
+                                    el = new XElement((MoveUnid == null) ? W.delText : W.t,
                                         new XAttribute(PtOpenXml.Status, "Deleted"),
                                         GetXmlSpaceAttribute(textOfTextElement),
-                                        textOfTextElement));
+                                        textOfTextElement);
                                 else if (ins)
-                                    return (object)(new XElement(W.t,
+                                    el = new XElement(W.t,
                                         new XAttribute(PtOpenXml.Status, "Inserted"),
                                         GetXmlSpaceAttribute(textOfTextElement),
-                                        textOfTextElement));
+                                        textOfTextElement);
                                 else
-                                    return (object)(new XElement(W.t,
+                                    el = new XElement(W.t,
                                         GetXmlSpaceAttribute(textOfTextElement),
-                                        textOfTextElement));
+                                        textOfTextElement);
+                                if (MoveUnid != null)  
+                                    el.Add(new XAttribute(PtOpenXml.MoveUnid, MoveUnid));
+                                return (object)el;
                             })
                             .ToList();
                         return newChildElements;
