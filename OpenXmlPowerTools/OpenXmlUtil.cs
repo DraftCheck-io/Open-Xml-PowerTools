@@ -15,6 +15,7 @@ using DocumentFormat.OpenXml.Packaging;
 using System.Drawing;
 using Font = System.Drawing.Font;
 using FontFamily = System.Drawing.FontFamily;
+using System.Net;
 
 // ReSharper disable InconsistentNaming
 
@@ -1756,6 +1757,11 @@ listSeparator
                 return false;
 
             return (bool) propAtt.Attribute(W.val);
+        }
+
+        public static string GenerateUnid()
+        {
+            return Guid.NewGuid().ToString().Replace("-", "");
         }
     }
 
@@ -5945,6 +5951,7 @@ listSeparator
         public static XName Index = pt + "Index";
         public static XName SourceIndex1 = pt + "SourceIndex1";
         public static XName SourceIndex2 = pt + "SourceIndex2";
+        public static XName Unid2 = pt + "Unid2";
         public static XName UnidBackup = pt + "UnidBackup";
         public static XName MoveUnid = pt + "MoveUnid";
     }

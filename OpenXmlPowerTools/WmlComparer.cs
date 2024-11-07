@@ -15,6 +15,8 @@ using System.Text;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
 using System.Drawing;
+using System.Runtime.InteropServices.ComTypes;
+using System.Collections;
 
 // It is possible to optimize DescendantContentAtoms
 
@@ -1663,7 +1665,7 @@ namespace OpenXmlPowerTools
             MarkRowsAsDeletedOrInserted(settings, correlatedSequence);
 
             // DraftCheck
-            DetectMovedCorrelatedSequences(settings, correlatedSequence);
+            DetectMovedContentInCorrelatedSequence(settings, correlatedSequence);
 
             // the following gets a flattened list of ComparisonUnitAtoms, with status indicated in each ComparisonUnitAtom: Deleted, Inserted, or Equal
             var listOfComparisonUnitAtoms = FlattenToComparisonUnitAtomList(correlatedSequence, settings);
@@ -2223,7 +2225,7 @@ namespace OpenXmlPowerTools
             XElement container = node as XElement;
             markMoveRanges(container, W.moveFrom, W.moveFromRangeStart, W.moveFromRangeEnd);
             markMoveRanges(container, W.moveTo, W.moveToRangeStart, W.moveToRangeEnd);
-        } 
+        }
 
         private static void MarkContentAsDeletedOrInserted(XDocument newXDoc, WmlComparerSettings settings)
         {
@@ -2234,7 +2236,7 @@ namespace OpenXmlPowerTools
 
         private static XNode MarkContentAsDeletedOrInsertedTransform(XNode node, WmlComparerSettings settings)
         {
-            List<string> getRunTextsAttributeValues(XElement run, XName attrName) 
+            List<string> getRunTextsAttributeValues(XElement run, XName attrName)
             {
                 return run
                     .DescendantsTrimmed(W.txbxContent)
@@ -2295,7 +2297,7 @@ namespace OpenXmlPowerTools
                         return new XElement(W.pPr,
                             element.Attributes(),
                             element.Nodes().Select(n => MarkContentAsDeletedOrInsertedTransform(n, settings)));
-                    
+
                     // find all runs inside current paragraph
                     var paragraphRuns = element
                         .Ancestors(W.p)
@@ -3090,7 +3092,8 @@ namespace OpenXmlPowerTools
                     {
                         var thisUnid = (string)ae.Attribute(PtOpenXml.Unid);
                         if (thisUnid == null)
-                            Guid.NewGuid().ToString().Replace("-", "");
+                            // DraftCheck
+                            thisUnid = Guid.NewGuid().ToString().Replace("-", "");
                         return thisUnid;
                     });
                 var thisAncestorUnids = currentAncestorUnids
@@ -3172,7 +3175,8 @@ namespace OpenXmlPowerTools
                     {
                         var thisUnid = (string)ae.Attribute(PtOpenXml.Unid);
                         if (thisUnid == null)
-                            Guid.NewGuid().ToString().Replace("-", "");
+                            // DraftCheck
+                            thisUnid = Guid.NewGuid().ToString().Replace("-", "");
                         return thisUnid;
                     });
                 var thisAncestorUnids = currentAncestorUnids
@@ -3341,56 +3345,57 @@ namespace OpenXmlPowerTools
         }
 
         // DraftCheck
-        private static string GetComparisonUnitText(ComparisonUnit comparisonUnit) 
+        private class CorrelatedSequenceStats
         {
-            if (comparisonUnit is ComparisonUnitAtom)
-            {
-                return ((ComparisonUnitAtom)comparisonUnit).ContentElement.Value;
-            }
-            else 
-            {
-                return GetComparisonUnitText(comparisonUnit.Contents.ToArray());
-            }
-        }
+            public readonly int Total = 0;
+            public readonly int Equal = 0;
+            public readonly float Percentage = 0;
 
-        // DraftCheck
-        private static string GetComparisonUnitText(ComparisonUnit[] comparisonUnits) {
-            var sb = new StringBuilder();
-            foreach (var cu in comparisonUnits)
+            public CorrelatedSequenceStats(List<CorrelatedSequence> correlatedSequence = null)
             {
-                sb.Append(GetComparisonUnitText(cu));
-            }
-            return sb.ToString();
-        }
+                var total1 = 0;
+                var total2 = 0;
+                var equal = 0;
 
-        // DraftCheck
-        private static float CalcCorrelatedSequencesEqualPercentage(List<CorrelatedSequence> correlatedSequences) {
-            var total = 0;
-            var equal = 0;
-
-            foreach (var cs in correlatedSequences)
-            {
-                var cus = cs.ComparisonUnitArray1 ?? cs.ComparisonUnitArray2;
-                var text = GetComparisonUnitText(cus);
-
-                if (StringUtil.ContainsNonWhiteSpaceChar(text))
+                foreach (var cs in correlatedSequence)
                 {
-                    total += text.Length;
+                    var cus = cs.ComparisonUnitArray1 ?? cs.ComparisonUnitArray2;
+                    var length = cus.Sum(cu => cu.DescendantContentAtomsCount);
+
                     if (cs.CorrelationStatus == CorrelationStatus.Equal)
                     {
-                        equal += text.Count(c => !char.IsWhiteSpace(c));
+                        equal += length;
+                        total1 += length;
+                        total2 += length;
+                    }
+                    else if (cs.CorrelationStatus == CorrelationStatus.Deleted)
+                    {
+                        total1 += length;
+                    }
+                    else if (cs.CorrelationStatus == CorrelationStatus.Inserted)
+                    {
+                        total2 += length;
                     }
                 }
-            }
 
-            return (float)equal / total;
+                var total = Math.Min(total1, total2);
+                var percentage = total > 0 ? (float)equal / total : 0;
+
+                Total = total;
+                Equal = equal;
+                Percentage = percentage;
+            }
+            
         }
 
-        private static void BackupComparisonUnitAtomsUnids(ComparisonUnit[] comparisonUnits) {
-            foreach (var cu in comparisonUnits)
-            {
-                var cuas = cu.DescendantContentAtoms();
-                foreach (var cua in cuas)
+        private static readonly int s_MinMovedSequenceLength = 100;
+        private static readonly float s_MinMovedSequenceEquityRatio = 0.5F;
+
+        // DraftCheck
+        private static void DetectMovedContentInCorrelatedSequence(WmlComparerSettings settings, IEnumerable<CorrelatedSequence> correlatedSequence)
+        {
+            void backupComparisonUnitAtomsUnids(IEnumerable<ComparisonUnitAtom> comparisonUnitAtoms) {
+                foreach (var cua in comparisonUnitAtoms)
                 {
                     foreach (var ae in cua.AncestorElements)
                     {
@@ -3400,78 +3405,198 @@ namespace OpenXmlPowerTools
                             ae.Add(new XAttribute(PtOpenXml.UnidBackup, unid));
                         }
                     }
+
+                    if (cua.ContentElement.Attribute(PtOpenXml.Unid2) == null)
+                    {
+                        cua.ContentElement.Add(new XAttribute(PtOpenXml.Unid2, Util.GenerateUnid()));
+                    }
                 }
             }
-        }
 
-        private static void RestoreComparisonUnitAtomsUnids(ComparisonUnit[] comparisonUnits) {
-            foreach (var cu in comparisonUnits)
-            {
-                var cuas = cu.DescendantContentAtoms();
-                foreach (var cua in cuas)
+            void restoreComparisonUnitAtomsUnids(IEnumerable<ComparisonUnitAtom> comparisonUnitAtoms) {
+                foreach (var cua in comparisonUnitAtoms)
                 {
                     foreach (var ae in cua.AncestorElements)
                     {
-                        var unidBackup = (string)ae.Attribute(PtOpenXml.UnidBackup);
-                        if (unidBackup != null)
+                        var unidBackupAttr = ae.Attribute(PtOpenXml.UnidBackup);
+                        if (unidBackupAttr != null)
                         {
-                            ae.Attribute(PtOpenXml.Unid).Value = unidBackup;
-                            ae.Attribute(PtOpenXml.UnidBackup).Remove();
+                            ae.Attribute(PtOpenXml.Unid).Value = unidBackupAttr.Value;
+                            unidBackupAttr.Remove();
                         }
                     }
+
+                    cua.ContentElement.Attribute(PtOpenXml.Unid2)?.Remove();
                 }
             }
-        }
 
-        private static void AssignMoveUnidsToComparisonUnits(ComparisonUnit[] comparisonUnits, string moveUid) {
-            foreach (var cu in comparisonUnits)
-            {
-                cu.MoveUnid = moveUid;
-                if (cu.Contents != null)
+            void assignMoveUnidsToComparisonUnits(IEnumerable<ComparisonUnit> comparisonUnits, string moveUid) {
+                foreach (var cu in comparisonUnits)
                 {
-                    AssignMoveUnidsToComparisonUnits(cu.Contents.ToArray(), moveUid);
-                }
-            }
-        }
-
-        // DraftCheck
-        private static void DetectMovedCorrelatedSequences(WmlComparerSettings settings, List<CorrelatedSequence> correlatedSequence)
-        {
-            var deletedSequences = correlatedSequence
-                .Where(cs => cs.CorrelationStatus == CorrelationStatus.Deleted);
-            var insertedSequences = correlatedSequence
-                .Where(cs => cs.CorrelationStatus == CorrelationStatus.Inserted);
-
-            var insertedCUs = insertedSequences.Select(cs => cs.ComparisonUnitArray2).ToArray();
-            var deletedCUs = deletedSequences.Select(cs => cs.ComparisonUnitArray1).ToArray();
-
-            foreach (var insertedCU in insertedCUs)
-            {
-                foreach (var deletedCU in deletedCUs) {
-                    BackupComparisonUnitAtomsUnids(deletedCU);
-                    BackupComparisonUnitAtomsUnids(insertedCU);
-
-                    // Lcs algorithm changes the original Unids of the elements; so need to backup and restore them
-                    var lcs = Lcs(deletedCU, insertedCU, settings);
-                    
-                    RestoreComparisonUnitAtomsUnids(deletedCU);
-                    RestoreComparisonUnitAtomsUnids(insertedCU);
-
-                    if (CalcCorrelatedSequencesEqualPercentage(lcs) > 0.5)
+                    foreach (var ca in cu.DescendantContentAtoms())
                     {
-                        var moveUid = Guid.NewGuid().ToString().Replace("-", "");
-                        
-                        foreach (var cs in lcs)
-                        {
-                            if (cs.CorrelationStatus == CorrelationStatus.Equal)
-                            {
-                                AssignMoveUnidsToComparisonUnits(cs.ComparisonUnitArray1, moveUid);
-                                AssignMoveUnidsToComparisonUnits(cs.ComparisonUnitArray2, moveUid);
-                            }
-                        }
+                        ca.MoveUnid = moveUid;
                     }
                 }
             }
+
+            IEnumerable<IEnumerable<ComparisonUnit>> getComparisonUnitsChunksByStatus(
+                IEnumerable<CorrelatedSequence> correlatedSequence2, 
+                CorrelationStatus status, 
+                int minLength = 0
+            )
+            {
+                return correlatedSequence2
+                    .Where(cs => cs.CorrelationStatus == status)
+                    .Select(cs => cs.ComparisonUnitArray1 ?? cs.ComparisonUnitArray2)
+                    // unwrap ComparisonUnitGroups for simplification
+                    .Select(cua => cua.SelectMany(cu => (cu is ComparisonUnitGroup cug)
+                        ? cug.Contents.ToArray()
+                        : new ComparisonUnit[] { cu }
+                    ))
+                    .Where(cu => cu.Sum(c => c.DescendantContentAtomsCount) > minLength);
+            }
+
+            IEnumerable<string> collectComparisonUnitAtomsUnids(IEnumerable<ComparisonUnit> comparisonUnits)
+            {
+                return comparisonUnits
+                    .SelectMany(cu => cu
+                        .DescendantContentAtoms()
+                        .Select(a => a.ContentElement.Attribute(PtOpenXml.Unid2)?.Value)
+                    );
+            }
+
+            IEnumerable<ComparisonUnit> filterComparisonUnits(IEnumerable<ComparisonUnit> comparisonUnits, List<string> excludedAtomsUnids = null)
+            {
+                var result = new List<ComparisonUnit>();
+
+                foreach (var cu in comparisonUnits)
+                {
+                    if (cu is ComparisonUnitAtom cua)
+                    {
+                        if (excludedAtomsUnids != null)
+                        {
+                            var unid = cua.ContentElement.Attribute(PtOpenXml.Unid2)?.Value;
+                            if (unid == null || !excludedAtomsUnids.Contains(unid))
+                                result.Add(cu);
+                        }
+                        else
+                        {
+                            result.Add(cu);
+                        }
+                    }
+                    else
+                    {
+                        var contents = filterComparisonUnits(cu.Contents, excludedAtomsUnids);
+                        if (contents.Any())
+                        {
+                            if (cu is ComparisonUnitWord cuw)
+                                result.Add(new ComparisonUnitWord(contents.OfType<ComparisonUnitAtom>()));
+                            else
+                                // do not expect ComparisonUnitGroup here (they were unwrapped before)
+                                throw new OpenXmlPowerToolsException("Internal error: unexpected ComparisonUnit type");
+                        }
+                    }
+                }
+
+                return result;
+            }
+
+            var insertedComparisonUnitsChunks = getComparisonUnitsChunksByStatus(correlatedSequence, CorrelationStatus.Inserted, s_MinMovedSequenceLength);
+            var deletedComparisonUnitsChunks = getComparisonUnitsChunksByStatus(correlatedSequence, CorrelationStatus.Deleted, s_MinMovedSequenceLength);
+
+            var insertedComparisonUnitAtoms = insertedComparisonUnitsChunks.SelectMany(cus => cus.SelectMany(cu => cu.DescendantContentAtoms()));
+            var deletedComparisonUnitAtoms = deletedComparisonUnitsChunks.SelectMany(cus => cus.SelectMany(cu => cu.DescendantContentAtoms()));
+
+            // Lcs algorithm changes the original Unids of the elements; so need to backup and restore them later
+            backupComparisonUnitAtomsUnids(insertedComparisonUnitAtoms);
+            backupComparisonUnitAtomsUnids(deletedComparisonUnitAtoms);
+
+            var movedCorrelatedSequencesWithStats = deletedComparisonUnitsChunks
+                .SelectMany(deletedComparisonUnits => insertedComparisonUnitsChunks
+                    .Select(insertedComparisonUnits => {
+                        var lcs = Lcs(deletedComparisonUnits.ToArray(), insertedComparisonUnits.ToArray(), settings);
+                        return new
+                        {
+                            Sequence = lcs,
+                            Stats = new CorrelatedSequenceStats(lcs),
+                            DeletedComparisonUnits = deletedComparisonUnits,
+                            InsertedComparisonUnits = insertedComparisonUnits,
+                        };
+                    })
+                )
+                .ToList();
+
+            while (true)
+            {
+                // recalculate stats and re-filter sequences
+                movedCorrelatedSequencesWithStats = movedCorrelatedSequencesWithStats
+                    .Where(ms => ms.Stats.Total > s_MinMovedSequenceLength && ms.Stats.Percentage > s_MinMovedSequenceEquityRatio)
+                    .OrderByDescending(ms => ms.Stats.Equal)
+                    .ThenByDescending(ms => ms.Stats.Percentage)
+                    .ToList();
+
+                var longestMovedSequenceWithStats = movedCorrelatedSequencesWithStats.FirstOrDefault();
+
+                if (longestMovedSequenceWithStats == null)
+                    break;
+
+                var moveUid = Util.GenerateUnid();
+
+                List<string> movedFromComparisonUnitAtomsUnids = new List<string>();
+                List<string> movedToComparisonUnitAtomsUnids = new List<string>();
+
+                foreach (var cs in longestMovedSequenceWithStats.Sequence)
+                {
+                    if (cs.CorrelationStatus == CorrelationStatus.Equal)
+                    {
+                        assignMoveUnidsToComparisonUnits(cs.ComparisonUnitArray1, moveUid);
+                        assignMoveUnidsToComparisonUnits(cs.ComparisonUnitArray2, moveUid);
+
+                        movedFromComparisonUnitAtomsUnids.AddRange(collectComparisonUnitAtomsUnids(cs.ComparisonUnitArray1));
+                        movedToComparisonUnitAtomsUnids.AddRange(collectComparisonUnitAtomsUnids(cs.ComparisonUnitArray2));
+                    }
+                }
+
+                movedCorrelatedSequencesWithStats.RemoveAt(0);
+
+                // remove moved atoms from other sequences and re-calculate them if necessary
+                movedCorrelatedSequencesWithStats = movedCorrelatedSequencesWithStats
+                    .Select(mcs => {
+                        var deletedComparisonUnitAtomsUnids = collectComparisonUnitAtomsUnids(mcs.DeletedComparisonUnits);
+                        var insertedComparisonUnitAtomsUnids = collectComparisonUnitAtomsUnids(mcs.InsertedComparisonUnits);
+
+                        if (deletedComparisonUnitAtomsUnids.Intersect(movedFromComparisonUnitAtomsUnids).Any() ||
+                            insertedComparisonUnitAtomsUnids.Intersect(movedToComparisonUnitAtomsUnids).Any())
+                        {
+                            var newDeletedComparisonUnits = filterComparisonUnits(mcs.DeletedComparisonUnits, movedFromComparisonUnitAtomsUnids);
+                            var newInsertedComparisonUnits = filterComparisonUnits(mcs.InsertedComparisonUnits, movedToComparisonUnitAtomsUnids);
+
+                            var newDeletedComparisonUnitsCount = newDeletedComparisonUnits.Sum(cu => cu.DescendantContentAtomsCount);
+                            var newInsertedComparisonUnitsCount = newInsertedComparisonUnits.Sum(cu => cu.DescendantContentAtomsCount);
+
+                            if (newDeletedComparisonUnitsCount < s_MinMovedSequenceLength || newInsertedComparisonUnitsCount < s_MinMovedSequenceLength)
+                                return null;
+
+                            var newLcs = Lcs(newDeletedComparisonUnits.ToArray(), newInsertedComparisonUnits.ToArray(), settings);
+
+                            return new
+                            {
+                                Sequence = newLcs,
+                                Stats = new CorrelatedSequenceStats(newLcs),
+                                DeletedComparisonUnits = newDeletedComparisonUnits,
+                                InsertedComparisonUnits = newInsertedComparisonUnits,
+                            };
+                        }
+
+                        return mcs;
+                    })
+                    .Where(mcs => mcs != null)
+                    .ToList();
+            }
+
+            restoreComparisonUnitAtomsUnids(insertedComparisonUnitAtoms);
+            restoreComparisonUnitAtomsUnids(deletedComparisonUnitAtoms);
         }
 
         public enum WmlComparerRevisionType
@@ -4821,7 +4946,7 @@ namespace OpenXmlPowerTools
                                     el = new XElement(W.t,
                                         GetXmlSpaceAttribute(textOfTextElement),
                                         textOfTextElement);
-                                if (MoveUnid != null)  
+                                if (MoveUnid != null)
                                     el.Add(new XAttribute(PtOpenXml.MoveUnid, MoveUnid));
                                 return (object)el;
                             })
@@ -7312,7 +7437,7 @@ namespace OpenXmlPowerTools
             {
                 if (d.Attribute(PtOpenXml.Unid) == null)
                 {
-                    string unid = Guid.NewGuid().ToString().Replace("-", "");
+                    string unid = Util.GenerateUnid();
                     var newAtt = new XAttribute(PtOpenXml.Unid, unid);
                     d.Add(newAtt);
                 }
@@ -7346,12 +7471,20 @@ namespace OpenXmlPowerTools
 
     public abstract class ComparisonUnit
     {
-        public List<ComparisonUnit> Contents;
+        public List<ComparisonUnit> Contents
+        {
+            get
+            {
+                return m_Contents;
+            }
+            set
+            {
+                m_Contents = value;
+                m_DescendantContentAtomsCount = null;
+            }
+        }
         public string SHA1Hash;
         public CorrelationStatus CorrelationStatus;
-
-        // DraftCheck
-        public string MoveUnid;
 
         public IEnumerable<ComparisonUnit> Descendants()
         {
@@ -7365,6 +7498,7 @@ namespace OpenXmlPowerTools
             return Descendants().OfType<ComparisonUnitAtom>();
         }
 
+        private List<ComparisonUnit> m_Contents;
         private int? m_DescendantContentAtomsCount = null;
 
         public int DescendantContentAtomsCount
@@ -7482,6 +7616,9 @@ namespace OpenXmlPowerTools
         public OpenXmlPart Part;
         public XElement RevTrackElement;
 
+        // DraftCheck
+        public string MoveUnid;
+
         public ComparisonUnitAtom(XElement contentElement, XElement[] ancestorElements, OpenXmlPart part, WmlComparerSettings settings)
         {
             ContentElement = contentElement;
@@ -7530,11 +7667,11 @@ namespace OpenXmlPowerTools
                 revTrackElement = contentElement
                     .Elements(W.rPr)
                     .Elements()
-                    .FirstOrDefault(e => e.Name == W.del || e.Name == W.ins);
+                    .FirstOrDefault(e => e.Name == W.del || e.Name == W.ins || e.Name == W.moveFrom || e.Name == W.moveTo);
                 return revTrackElement;
             }
 
-            revTrackElement = ancestors.FirstOrDefault(a => a.Name == W.del || a.Name == W.ins);
+            revTrackElement = ancestors.FirstOrDefault(a => a.Name == W.del || a.Name == W.ins || a.Name == W.moveFrom || a.Name == W.moveTo);
             return revTrackElement;
         }
 
@@ -7653,6 +7790,7 @@ namespace OpenXmlPowerTools
     internal class ComparisonUnitGroup : ComparisonUnit
     {
         public ComparisonUnitGroupType ComparisonUnitGroupType;
+        public int Level;
         public string CorrelatedSHA1Hash;
         public string StructureSHA1Hash;
 
@@ -7660,6 +7798,7 @@ namespace OpenXmlPowerTools
         {
             Contents = comparisonUnitList.ToList();
             ComparisonUnitGroupType = groupType;
+            Level = level;
             var first = comparisonUnitList.First();
             ComparisonUnitAtom comparisonUnitAtom = GetFirstComparisonUnitAtomOfGroup(first);
             XName ancestorName = null;
