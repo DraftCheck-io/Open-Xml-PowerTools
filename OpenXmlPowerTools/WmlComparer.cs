@@ -3592,8 +3592,6 @@ namespace OpenXmlPowerTools
                     }
                 }
 
-                movedCorrelatedSequencesWithStats.RemoveAt(0);
-
                 // remove moved atoms from other sequences and re-calculate them if necessary
                 movedCorrelatedSequencesWithStats = movedCorrelatedSequencesWithStats
                     .Select(mcs => {
