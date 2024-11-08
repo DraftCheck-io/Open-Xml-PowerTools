@@ -3558,8 +3558,7 @@ namespace OpenXmlPowerTools
                             InsertedComparisonUnits = insertedComparisonUnits,
                         };
                     })
-                )
-                .ToList();
+                );
 
             while (true)
             {
@@ -3567,8 +3566,7 @@ namespace OpenXmlPowerTools
                 movedCorrelatedSequencesWithStats = movedCorrelatedSequencesWithStats
                     .Where(ms => ms.Stats.Total > s_MinMovedSequenceLength && ms.Stats.Percentage > s_MinMovedSequenceEquityRatio)
                     .OrderByDescending(ms => ms.Stats.Equal)
-                    .ThenByDescending(ms => ms.Stats.Percentage)
-                    .ToList();
+                    .ThenByDescending(ms => ms.Stats.Percentage);
 
                 var longestMovedSequenceWithStats = movedCorrelatedSequencesWithStats.FirstOrDefault();
 
@@ -3623,8 +3621,7 @@ namespace OpenXmlPowerTools
 
                         return mcs;
                     })
-                    .Where(mcs => mcs != null)
-                    .ToList();
+                    .Where(mcs => mcs != null);
             }
 
             restoreComparisonUnitAtomsUnids(insertedComparisonUnitAtoms);
