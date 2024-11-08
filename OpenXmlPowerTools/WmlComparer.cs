@@ -15,8 +15,6 @@ using System.Text;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
 using System.Drawing;
-using System.Runtime.InteropServices.ComTypes;
-using System.Collections;
 
 // It is possible to optimize DescendantContentAtoms
 
@@ -3395,15 +3393,23 @@ namespace OpenXmlPowerTools
         private static void DetectMovedContentInCorrelatedSequence(WmlComparerSettings settings, IEnumerable<CorrelatedSequence> correlatedSequence)
         {
             void backupComparisonUnitAtomsUnids(IEnumerable<ComparisonUnitAtom> comparisonUnitAtoms) {
+                void doBackupAttribute(XElement element, XName attributeName) {
+                    XName backupAttributeName = attributeName + "Backup";
+                    var attr = element.Attribute(attributeName);
+                    var backupAttr = element.Attribute(backupAttributeName);
+                    if (attr != null && backupAttr == null)
+                    {
+                        element.Add(new XAttribute(backupAttributeName, attr.Value));
+                    }
+                }
+
                 foreach (var cua in comparisonUnitAtoms)
                 {
+                    doBackupAttribute(cua.ContentElement, PtOpenXml.Unid);
+
                     foreach (var ae in cua.AncestorElements)
                     {
-                        var unid = (string)ae.Attribute(PtOpenXml.Unid);
-                        if (unid != null && ae.Attribute(PtOpenXml.UnidBackup) == null)
-                        {
-                            ae.Add(new XAttribute(PtOpenXml.UnidBackup, unid));
-                        }
+                        doBackupAttribute(ae, PtOpenXml.Unid);
                     }
 
                     if (cua.ContentElement.Attribute(PtOpenXml.Unid2) == null)
@@ -3414,16 +3420,24 @@ namespace OpenXmlPowerTools
             }
 
             void restoreComparisonUnitAtomsUnids(IEnumerable<ComparisonUnitAtom> comparisonUnitAtoms) {
+                void doRestoreAttribute(XElement element, XName attributeName) {
+                    XName backupAttributeName = attributeName + "Backup";
+                    var attr = element.Attribute(attributeName);
+                    var backupAttr = element.Attribute(backupAttributeName);
+                    if (attr != null && backupAttr != null)
+                    {
+                        attr.Value = backupAttr.Value;
+                        backupAttr.Remove();
+                    }
+                }
+
                 foreach (var cua in comparisonUnitAtoms)
                 {
+                    doRestoreAttribute(cua.ContentElement, PtOpenXml.Unid);
+
                     foreach (var ae in cua.AncestorElements)
                     {
-                        var unidBackupAttr = ae.Attribute(PtOpenXml.UnidBackup);
-                        if (unidBackupAttr != null)
-                        {
-                            ae.Attribute(PtOpenXml.Unid).Value = unidBackupAttr.Value;
-                            unidBackupAttr.Remove();
-                        }
+                        doRestoreAttribute(ae, PtOpenXml.Unid);
                     }
 
                     cua.ContentElement.Attribute(PtOpenXml.Unid2)?.Remove();
@@ -3440,23 +3454,6 @@ namespace OpenXmlPowerTools
                 }
             }
 
-            IEnumerable<IEnumerable<ComparisonUnit>> getComparisonUnitsChunksByStatus(
-                IEnumerable<CorrelatedSequence> correlatedSequence2, 
-                CorrelationStatus status, 
-                int minLength = 0
-            )
-            {
-                return correlatedSequence2
-                    .Where(cs => cs.CorrelationStatus == status)
-                    .Select(cs => cs.ComparisonUnitArray1 ?? cs.ComparisonUnitArray2)
-                    // unwrap ComparisonUnitGroups for simplification
-                    .Select(cua => cua.SelectMany(cu => (cu is ComparisonUnitGroup cug)
-                        ? cug.Contents.ToArray()
-                        : new ComparisonUnit[] { cu }
-                    ))
-                    .Where(cu => cu.Sum(c => c.DescendantContentAtomsCount) > minLength);
-            }
-
             IEnumerable<string> collectComparisonUnitAtomsUnids(IEnumerable<ComparisonUnit> comparisonUnits)
             {
                 return comparisonUnits
@@ -3466,7 +3463,11 @@ namespace OpenXmlPowerTools
                     );
             }
 
-            IEnumerable<ComparisonUnit> filterComparisonUnits(IEnumerable<ComparisonUnit> comparisonUnits, List<string> excludedAtomsUnids = null)
+            IEnumerable<ComparisonUnit> reassembleComparisonUnits(
+                IEnumerable<ComparisonUnit> comparisonUnits, 
+                IEnumerable<string> excludedAtomsUnids = null,
+                bool excludeNonTextAtomElements = true
+            )
             {
                 var result = new List<ComparisonUnit>();
 
@@ -3474,6 +3475,10 @@ namespace OpenXmlPowerTools
                 {
                     if (cu is ComparisonUnitAtom cua)
                     {
+                        // skip if content element is not a text element
+                        if (excludeNonTextAtomElements && cua.ContentElement.Name != W.t && cua.ContentElement.Name != W.delText)
+                            continue;
+
                         if (excludedAtomsUnids != null)
                         {
                             var unid = cua.ContentElement.Attribute(PtOpenXml.Unid2)?.Value;
@@ -3487,7 +3492,7 @@ namespace OpenXmlPowerTools
                     }
                     else
                     {
-                        var contents = filterComparisonUnits(cu.Contents, excludedAtomsUnids);
+                        var contents = reassembleComparisonUnits(cu.Contents, excludedAtomsUnids, excludeNonTextAtomElements);
                         if (contents.Any())
                         {
                             if (cu is ComparisonUnitWord cuw)
@@ -3502,11 +3507,40 @@ namespace OpenXmlPowerTools
                 return result;
             }
 
-            var insertedComparisonUnitsChunks = getComparisonUnitsChunksByStatus(correlatedSequence, CorrelationStatus.Inserted, s_MinMovedSequenceLength);
-            var deletedComparisonUnitsChunks = getComparisonUnitsChunksByStatus(correlatedSequence, CorrelationStatus.Deleted, s_MinMovedSequenceLength);
+            IEnumerable<IEnumerable<ComparisonUnit>> getComparisonUnitsChunksByStatus(
+                IEnumerable<CorrelatedSequence> correlatedSequence2, 
+                CorrelationStatus status, 
+                int minLength = 0
+            )
+            {
+                return correlatedSequence2
+                    .Where(cs => cs.CorrelationStatus == status)
+                    .Select(cs => cs.ComparisonUnitArray1 ?? cs.ComparisonUnitArray2)
+                    // unwrap ComparisonUnitGroups for simplification
+                    .Select(cua => cua.SelectMany(cu => (cu is ComparisonUnitGroup cug)
+                        ? cug.Contents.ToArray()
+                        : new ComparisonUnit[] { cu }
+                    ))
+                    .Select(cus => reassembleComparisonUnits(cus))
+                    // additionally split comparison units into chunks by paragraphs
+                    .SelectMany(cus => cus
+                        .GroupAdjacent(cu => cu
+                            .DescendantContentAtoms()
+                            .First()
+                            .AncestorElements
+                            .FirstOrDefault(ae => ae.Name == W.p)
+                            .Attribute(PtOpenXml.Unid)?.Value
+                        )
+                    )
+                    .Where(cu => cu.Sum(c => c.DescendantContentAtomsCount) > minLength);
+            }
 
-            var insertedComparisonUnitAtoms = insertedComparisonUnitsChunks.SelectMany(cus => cus.SelectMany(cu => cu.DescendantContentAtoms()));
+
+            var deletedComparisonUnitsChunks = getComparisonUnitsChunksByStatus(correlatedSequence, CorrelationStatus.Deleted, s_MinMovedSequenceLength);
+            var insertedComparisonUnitsChunks = getComparisonUnitsChunksByStatus(correlatedSequence, CorrelationStatus.Inserted, s_MinMovedSequenceLength);
+
             var deletedComparisonUnitAtoms = deletedComparisonUnitsChunks.SelectMany(cus => cus.SelectMany(cu => cu.DescendantContentAtoms()));
+            var insertedComparisonUnitAtoms = insertedComparisonUnitsChunks.SelectMany(cus => cus.SelectMany(cu => cu.DescendantContentAtoms()));
 
             // Lcs algorithm changes the original Unids of the elements; so need to backup and restore them later
             backupComparisonUnitAtomsUnids(insertedComparisonUnitAtoms);
@@ -3569,8 +3603,8 @@ namespace OpenXmlPowerTools
                         if (deletedComparisonUnitAtomsUnids.Intersect(movedFromComparisonUnitAtomsUnids).Any() ||
                             insertedComparisonUnitAtomsUnids.Intersect(movedToComparisonUnitAtomsUnids).Any())
                         {
-                            var newDeletedComparisonUnits = filterComparisonUnits(mcs.DeletedComparisonUnits, movedFromComparisonUnitAtomsUnids);
-                            var newInsertedComparisonUnits = filterComparisonUnits(mcs.InsertedComparisonUnits, movedToComparisonUnitAtomsUnids);
+                            var newDeletedComparisonUnits = reassembleComparisonUnits(mcs.DeletedComparisonUnits, movedFromComparisonUnitAtomsUnids);
+                            var newInsertedComparisonUnits = reassembleComparisonUnits(mcs.InsertedComparisonUnits, movedToComparisonUnitAtomsUnids);
 
                             var newDeletedComparisonUnitsCount = newDeletedComparisonUnits.Sum(cu => cu.DescendantContentAtomsCount);
                             var newInsertedComparisonUnitsCount = newInsertedComparisonUnits.Sum(cu => cu.DescendantContentAtomsCount);
