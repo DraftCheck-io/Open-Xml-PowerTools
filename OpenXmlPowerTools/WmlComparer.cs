@@ -1663,7 +1663,7 @@ namespace OpenXmlPowerTools
             MarkRowsAsDeletedOrInserted(settings, correlatedSequence);
 
             // DraftCheck
-            DetectMovedContentInCorrelatedSequence(settings, correlatedSequence);
+            // DetectMovedContentInCorrelatedSequence(settings, correlatedSequence);
 
             // the following gets a flattened list of ComparisonUnitAtoms, with status indicated in each ComparisonUnitAtom: Deleted, Inserted, or Equal
             var listOfComparisonUnitAtoms = FlattenToComparisonUnitAtomList(correlatedSequence, settings);
