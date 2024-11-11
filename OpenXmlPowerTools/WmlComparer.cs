@@ -1663,7 +1663,7 @@ namespace OpenXmlPowerTools
             MarkRowsAsDeletedOrInserted(settings, correlatedSequence);
 
             // DraftCheck
-            // DetectMovedContentInCorrelatedSequence(settings, correlatedSequence);
+            DetectMovedContentInCorrelatedSequence(settings, correlatedSequence);
 
             // the following gets a flattened list of ComparisonUnitAtoms, with status indicated in each ComparisonUnitAtom: Deleted, Inserted, or Equal
             var listOfComparisonUnitAtoms = FlattenToComparisonUnitAtomList(correlatedSequence, settings);
@@ -3383,7 +3383,7 @@ namespace OpenXmlPowerTools
                 Equal = equal;
                 Percentage = percentage;
             }
-            
+
         }
 
         private static readonly int s_MinMovedSequenceLength = 100;
@@ -3464,7 +3464,7 @@ namespace OpenXmlPowerTools
             }
 
             IEnumerable<ComparisonUnit> reassembleComparisonUnits(
-                IEnumerable<ComparisonUnit> comparisonUnits, 
+                IEnumerable<ComparisonUnit> comparisonUnits,
                 IEnumerable<string> excludedAtomsUnids = null,
                 bool excludeNonTextAtomElements = true
             )
@@ -3508,8 +3508,8 @@ namespace OpenXmlPowerTools
             }
 
             IEnumerable<IEnumerable<ComparisonUnit>> getComparisonUnitsChunksByStatus(
-                IEnumerable<CorrelatedSequence> correlatedSequence2, 
-                CorrelationStatus status, 
+                IEnumerable<CorrelatedSequence> correlatedSequence2,
+                CorrelationStatus status,
                 int minLength = 0
             )
             {
@@ -3565,6 +3565,7 @@ namespace OpenXmlPowerTools
                 // recalculate stats and re-filter sequences
                 movedCorrelatedSequencesWithStats = movedCorrelatedSequencesWithStats
                     .Where(ms => ms.Stats.Total > s_MinMovedSequenceLength && ms.Stats.Percentage > s_MinMovedSequenceEquityRatio)
+                    .ToList()
                     .OrderByDescending(ms => ms.Stats.Equal)
                     .ThenByDescending(ms => ms.Stats.Percentage);
 
@@ -3596,8 +3597,8 @@ namespace OpenXmlPowerTools
                         var deletedComparisonUnitAtomsUnids = collectComparisonUnitAtomsUnids(mcs.DeletedComparisonUnits);
                         var insertedComparisonUnitAtomsUnids = collectComparisonUnitAtomsUnids(mcs.InsertedComparisonUnits);
 
-                        if (deletedComparisonUnitAtomsUnids.Intersect(movedFromComparisonUnitAtomsUnids).Any() ||
-                            insertedComparisonUnitAtomsUnids.Intersect(movedToComparisonUnitAtomsUnids).Any())
+                        if (deletedComparisonUnitAtomsUnids.Overlaps(movedFromComparisonUnitAtomsUnids) ||
+                            insertedComparisonUnitAtomsUnids.Overlaps(movedToComparisonUnitAtomsUnids))
                         {
                             var newDeletedComparisonUnits = reassembleComparisonUnits(mcs.DeletedComparisonUnits, movedFromComparisonUnitAtomsUnids);
                             var newInsertedComparisonUnits = reassembleComparisonUnits(mcs.InsertedComparisonUnits, movedToComparisonUnitAtomsUnids);

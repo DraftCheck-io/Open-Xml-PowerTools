@@ -1076,6 +1076,13 @@ namespace OpenXmlPowerTools
                 return null;
             }
         }
+
+        public static bool Overlaps<T>(this IEnumerable<T> source, IEnumerable<T> other)
+        {
+            var sourceSet = new HashSet<T>(source);
+            var otherSet = new HashSet<T>(other);
+            return sourceSet.Overlaps(otherSet);
+        }
     }
 
     public class ExecutableRunner
