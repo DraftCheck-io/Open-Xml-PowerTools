@@ -3444,7 +3444,7 @@ namespace OpenXmlPowerTools
                 }
             }
 
-            void assignMoveUnidsToComparisonUnits(IEnumerable<ComparisonUnit> comparisonUnits, string moveUid) {
+            void assignMoveUnidsToComparisonUnitAtoms(IEnumerable<ComparisonUnit> comparisonUnits, string moveUid) {
                 foreach (var cu in comparisonUnits)
                 {
                     foreach (var ca in cu.DescendantContentAtoms())
@@ -3497,6 +3497,9 @@ namespace OpenXmlPowerTools
                         {
                             if (cu is ComparisonUnitWord cuw)
                                 result.Add(new ComparisonUnitWord(contents.OfType<ComparisonUnitAtom>()));
+                            // Do not process ComparisonUnitGroup here (they were unwrapped before during simplification)
+                            // else if (cu is ComparisonUnitGroup cug)
+                            //     result.Add(new ComparisonUnitGroup(contents, cug.ComparisonUnitGroupType, cug.Level));
                             else
                                 // do not expect ComparisonUnitGroup here (they were unwrapped before)
                                 throw new OpenXmlPowerToolsException("Internal error: unexpected ComparisonUnit type");
@@ -3505,6 +3508,15 @@ namespace OpenXmlPowerTools
                 }
 
                 return result;
+            }
+
+            IEnumerable<ComparisonUnit> unwrapComparisonUnitGroups(IEnumerable<ComparisonUnit> comparisonUnits)
+            {
+                return comparisonUnits.SelectMany(
+                    cu => (cu is ComparisonUnitGroup cug)
+                        ? unwrapComparisonUnitGroups(cug.Contents)
+                        : new ComparisonUnit[] { cu }
+                );
             }
 
             IEnumerable<IEnumerable<ComparisonUnit>> getComparisonUnitsChunksByStatus(
@@ -3517,10 +3529,7 @@ namespace OpenXmlPowerTools
                     .Where(cs => cs.CorrelationStatus == status)
                     .Select(cs => cs.ComparisonUnitArray1 ?? cs.ComparisonUnitArray2)
                     // unwrap ComparisonUnitGroups for simplification
-                    .Select(cua => cua.SelectMany(cu => (cu is ComparisonUnitGroup cug)
-                        ? cug.Contents.ToArray()
-                        : new ComparisonUnit[] { cu }
-                    ))
+                    .Select(cua => unwrapComparisonUnitGroups(cua))
                     .Select(cus => reassembleComparisonUnits(cus))
                     // additionally split comparison units into chunks by paragraphs
                     .SelectMany(cus => cus
@@ -3583,8 +3592,8 @@ namespace OpenXmlPowerTools
                 {
                     if (cs.CorrelationStatus == CorrelationStatus.Equal)
                     {
-                        assignMoveUnidsToComparisonUnits(cs.ComparisonUnitArray1, moveUid);
-                        assignMoveUnidsToComparisonUnits(cs.ComparisonUnitArray2, moveUid);
+                        assignMoveUnidsToComparisonUnitAtoms(cs.ComparisonUnitArray1, moveUid);
+                        assignMoveUnidsToComparisonUnitAtoms(cs.ComparisonUnitArray2, moveUid);
 
                         movedFromComparisonUnitAtomsUnids.AddRange(collectComparisonUnitAtomsUnids(cs.ComparisonUnitArray1));
                         movedToComparisonUnitAtomsUnids.AddRange(collectComparisonUnitAtomsUnids(cs.ComparisonUnitArray2));
