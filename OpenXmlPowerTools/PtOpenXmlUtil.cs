@@ -835,13 +835,15 @@ namespace OpenXmlPowerTools
                     ? ((DateTime) dateAtt).ToString("s")
                     : string.Empty;
                 string id = useId ? (string)rc.Attribute(W.id) ?? string.Empty : string.Empty;
-                string moveUnid = (string)rc.Attribute(PtOpenXml.MoveUnid) ?? string.Empty;
+                string moveFromUnid = (string)rc.Attribute(PtOpenXml.MoveFromUnid) ?? string.Empty;
+                string moveToUnid = (string)rc.Attribute(PtOpenXml.MoveToUnid) ?? string.Empty;
 
                 return prefix +
                     author +
                     date +
                     id +
-                    moveUnid +
+                    moveFromUnid +
+                    moveToUnid +
                     rc.Elements(W.r)
                         .Elements(W.rPr)
                         .Select(rPr => 
@@ -879,7 +881,7 @@ namespace OpenXmlPowerTools
                                 return dontConsolidate;
 
                             XElement rPr = ce.Element(W.rPr);
-                            XElement rPrCopy = (rPr != null) ? RemovePowerToolsMarkup(new XElement(rPr)) : null;
+                            XElement rPrCopy = (rPr != null) ? RemovePowerToolsMarkup(new XElement(rPr), true) : null;
 
                             string rPrString = rPrCopy != null ? rPrCopy.ToString(SaveOptions.None) : string.Empty;
 
@@ -1048,6 +1050,14 @@ namespace OpenXmlPowerTools
                 .Remove();
             return element;
         }
+
+        public static readonly XName[] RevTrackElementNames = new XName[]
+        {
+            W.del,
+            W.ins,
+            W.moveFrom,
+            W.moveTo
+        };
 
         private static Dictionary<XName, int> Order_settings = new Dictionary<XName, int>
         {
@@ -5953,7 +5963,8 @@ listSeparator
         public static XName SourceIndex2 = pt + "SourceIndex2";
         public static XName Unid2 = pt + "Unid2";
         public static XName UnidBackup = pt + "UnidBackup";
-        public static XName MoveUnid = pt + "MoveUnid";
+        public static XName MoveFromUnid = pt + "MoveFromUnid";
+        public static XName MoveToUnid = pt + "MoveToUnid";
     }
 
     public static class Xhtml

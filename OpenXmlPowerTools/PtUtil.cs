@@ -1105,30 +1105,24 @@ namespace OpenXmlPowerTools
             };
             try
             {
-                if (File.Exists(executablePath))
+                using (Process proc = new Process())
                 {
-                    using (Process proc = new Process())
-                    {
-                        proc.StartInfo.FileName = executablePath;
-                        proc.StartInfo.Arguments = arguments;
-                        proc.StartInfo.WorkingDirectory = workingDirectory;
-                        proc.StartInfo.UseShellExecute = false;
-                        proc.StartInfo.RedirectStandardOutput = true;
-                        proc.StartInfo.RedirectStandardError = true;
-                        proc.OutputDataReceived +=
-                            (o, e) => runResults.Output.Append(e.Data).Append(Environment.NewLine);
-                        proc.ErrorDataReceived +=
-                            (o, e) => runResults.Error.Append(e.Data).Append(Environment.NewLine);
-                        proc.Start();
-                        proc.BeginOutputReadLine();
-                        proc.BeginErrorReadLine();
-                        proc.WaitForExit();
-                        runResults.ExitCode = proc.ExitCode;
-                    }
-                }
-                else
-                {
-                    throw new ArgumentException("Invalid executable path.", "executablePath");
+                    proc.StartInfo.FileName = executablePath;
+                    proc.StartInfo.Arguments = arguments;
+                    proc.StartInfo.WorkingDirectory = workingDirectory;
+                    proc.StartInfo.UseShellExecute = false;
+                    proc.StartInfo.RedirectStandardOutput = true;
+                    proc.StartInfo.RedirectStandardError = true;
+                    proc.StartInfo.CreateNoWindow = false;
+                    proc.OutputDataReceived +=
+                        (o, e) => runResults.Output.Append(e.Data).Append(Environment.NewLine);
+                    proc.ErrorDataReceived +=
+                        (o, e) => runResults.Error.Append(e.Data).Append(Environment.NewLine);
+                    proc.Start();
+                    proc.BeginOutputReadLine();
+                    proc.BeginErrorReadLine();
+                    proc.WaitForExit();
+                    runResults.ExitCode = proc.ExitCode;
                 }
             }
             catch (Exception e)
