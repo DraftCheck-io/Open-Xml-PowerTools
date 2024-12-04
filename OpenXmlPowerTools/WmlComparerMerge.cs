@@ -18,13 +18,11 @@ namespace OpenXmlPowerTools
             IEnumerable<WmlRevisedDocumentInfo> revisedDocumentInfoList,
             WmlComparerSettings settings, WmlComparerMergeSettings mergeSettings)
         {
-            // TODO temporary disable 
-            settings.DetectContentMoves = false;
-
             var originalWithUnids = PreProcessMarkup(original);
             WmlDocument merged = new WmlDocument(originalWithUnids);
 
             var revisedDocumentInfoListCount = revisedDocumentInfoList.Count();
+            var revisors = revisedDocumentInfoList.Select(r => r.Revisor).ToArray();
 
             using (MemoryStream mergedMs = new MemoryStream())
             {
@@ -39,13 +37,21 @@ namespace OpenXmlPowerTools
                         .Where(d => (d.Name == W.p || d.Name == W.tbl) && d.Attribute(PtOpenXml.Unid) != null)
                         .ToDictionary(d => (string)d.Attribute(PtOpenXml.Unid));
 
-                    foreach (var revisedDocumentInfo in revisedDocumentInfoList)
+                    var revisedDocumentInfoList2 = revisedDocumentInfoList.ToList();
+
+                    for (var i = 0; i < revisedDocumentInfoList2.Count; i++)
                     {
+                        var revisedDocumentInfo = revisedDocumentInfoList2[i];
+                        var isLast = i == revisedDocumentInfoList2.Count - 1;
+
                         var internalSettings = new WmlComparerInternalSettings()
                         {
                             PreProcessMarkupInOriginal = false,
-                            ResolveTrackingChanges = false, // do not wrap runs with w:ins and w:del 
-                            IgnoreChangedContentDuringLcsAlgorithm = true, 
+                            MergeMode = true, 
+                            MergeIteration = i,
+                            // for last item, we need to resolve all accumulated tracking changes
+                            ResolveTrackingChanges = isLast,
+                            MergeRevisors = revisors,
                         };
 
                         var revised = revisedDocumentInfo.RevisedDocument;
@@ -79,5 +85,18 @@ namespace OpenXmlPowerTools
             }
             return merged;
         }
+
+        private static void StoreChangeTrackingStatusesForMerge(XDocument doc, int mergeIteration)
+        {
+            doc.Root
+                .Descendants()
+                .Where(e => e.Attribute(PtOpenXml.Status) != null && e.Attribute(PtOpenXml.MergeStatus) == null)
+                .ToList()
+                .ForEach(e => {
+                    e.SetAttributeValue(PtOpenXml.MergeStatus, e.Attribute(PtOpenXml.Status).Value);
+                    e.SetAttributeValue(PtOpenXml.MergeIteration, mergeIteration);
+                });
+        }
+
     }
 }

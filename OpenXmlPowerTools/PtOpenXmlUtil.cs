@@ -5961,10 +5961,14 @@ listSeparator
         public static XName Index = pt + "Index";
         public static XName SourceIndex1 = pt + "SourceIndex1";
         public static XName SourceIndex2 = pt + "SourceIndex2";
-        public static XName Unid2 = pt + "Unid2";
+        // used for MoveFrom and MoveTo detection, to not mutate the original Unid value during additional LCS processings
+        public static XName Unid2 = pt + "Unid2"; 
+        // backups for Unid, to be able to restore the original Unid value after additional LCS processings
         public static XName UnidBackup = pt + "UnidBackup";
         public static XName MoveFromUnid = pt + "MoveFromUnid";
         public static XName MoveToUnid = pt + "MoveToUnid";
+        public static XName MergeStatus = pt + "MergeStatus";
+        public static XName MergeIteration = pt + "MergeIteration";
     }
 
     public static class Xhtml
