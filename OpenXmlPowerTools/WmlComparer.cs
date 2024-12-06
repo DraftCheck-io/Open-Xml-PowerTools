@@ -89,8 +89,8 @@ namespace OpenXmlPowerTools
             PreProcessMarkupInOriginal = preProcessMarkupInOriginal;
         }
     }
-    
-    public class PreProcessMarkupSettings 
+
+    public class PreProcessMarkupSettings
     {
         public int StartingIdForFootnotesEndnotes = 1;
         public bool TrackRunsSourceIndexes = false;
@@ -124,8 +124,8 @@ namespace OpenXmlPowerTools
         }
 
         private static WmlDocument CompareInternal(
-            WmlDocument source1, 
-            WmlDocument source2, 
+            WmlDocument source1,
+            WmlDocument source2,
             WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
@@ -296,9 +296,9 @@ namespace OpenXmlPowerTools
         }
 
         private static WmlDocument HashBlockLevelContent(
-            WmlDocument source, 
-            WmlDocument source1afterProcessingRevTracking, 
-            WmlComparerSettings settings, 
+            WmlDocument source,
+            WmlDocument source1afterProcessingRevTracking,
+            WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -710,9 +710,9 @@ namespace OpenXmlPowerTools
         }
 
         private static WmlDocument ProduceDocumentWithTrackedRevisions(
-            WmlDocument wmlResult, 
-            WordprocessingDocument wDoc1, 
-            WordprocessingDocument wDoc2, 
+            WmlDocument wmlResult,
+            WordprocessingDocument wDoc1,
+            WordprocessingDocument wDoc2,
             WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
@@ -866,18 +866,18 @@ namespace OpenXmlPowerTools
                         new XElement(W.document,
                             rootNamespaceAttributes,
                             new XElement(W.body, newBodyChildren)));
-                    
-                    if (internalSettings.MergeMode) 
+
+                    if (internalSettings.MergeMode)
                     {
                         StoreChangeTrackingStatusesForMerge(newXDoc, internalSettings.MergeIteration);
                     }
 
-                    if (internalSettings.ResolveTrackingChanges) 
+                    if (internalSettings.ResolveTrackingChanges)
                     {
                         MarkContentAsDeletedOrInserted(newXDoc, settings, internalSettings);
                         CoalesceAdjacentRunsWithIdenticalFormatting(newXDoc);
-                    } 
-                    
+                    }
+
                     IgnorePt14Namespace(newXDoc.Root);
 
                     ProcessFootnoteEndnote(
@@ -1418,7 +1418,7 @@ namespace OpenXmlPowerTools
                     var statusList = getRunDescendantsAttributeValues(element, PtOpenXml.Status);
                     if (statusList.Count() > 1)
                         throw new OpenXmlPowerToolsException("Internal error - have both deleted and inserted text elements in the same run.");
-                    
+
                     if (statusList.Count() == 0)
                         return new XElement(W.r,
                             element.Attributes(),
@@ -1429,18 +1429,18 @@ namespace OpenXmlPowerTools
                     if (moveFromUnidsList.Count() > 1)
                         throw new OpenXmlPowerToolsException("Internal error - have more than one different move from ranges in the same run.");
                     var moveFromUnid = moveFromUnidsList.FirstOrDefault();
-                    
+
                     var moveToUnidsList = getRunDescendantsAttributeValues(element, PtOpenXml.MoveToUnid);
                     if (moveToUnidsList.Count() > 1)
-                        throw new OpenXmlPowerToolsException("Internal error - have more than one different move to ranges in the same run.");     
+                        throw new OpenXmlPowerToolsException("Internal error - have more than one different move to ranges in the same run.");
                     var moveToUnid = moveToUnidsList.FirstOrDefault();
-                    
+
                     if (moveFromUnid != null && moveToUnid != null)
                         throw new OpenXmlPowerToolsException("Internal error - have both move from and move to ranges in the same run.");
 
                     var mergeIterationsList = getRunDescendantsAttributeValues(element, PtOpenXml.MergeIteration);
                     if (mergeIterationsList.Count() > 1)
-                        throw new OpenXmlPowerToolsException("Internal error - have more than one different merge iterations in the same run.");     
+                        throw new OpenXmlPowerToolsException("Internal error - have more than one different merge iterations in the same run.");
                     var mergeIteration = int.Parse(mergeIterationsList.FirstOrDefault() ?? "-1");
 
                     var author = (mergeIteration >= 0 && mergeIteration <= internalSettings.MergeRevisors.Count())
@@ -2422,8 +2422,8 @@ namespace OpenXmlPowerTools
 
         // the following gets a flattened list of ComparisonUnitAtoms, with status indicated in each ComparisonUnitAtom: Deleted, Inserted, or Equal
         private static List<ComparisonUnitAtom> FlattenToComparisonUnitAtomList(
-            List<CorrelatedSequence> correlatedSequence, 
-            WmlComparerSettings settings, 
+            List<CorrelatedSequence> correlatedSequence,
+            WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -2839,7 +2839,7 @@ namespace OpenXmlPowerTools
                 // strip non-equal sequences at the beginning and at the end
                 var firstNonEqualIndex = 0;
                 var lastNonEqualIndex = movedSequences.Count - 1;
-                
+
                 while (firstNonEqualIndex < lastNonEqualIndex && movedSequences[firstNonEqualIndex].CorrelationStatus != CorrelationStatus.Equal)
                     firstNonEqualIndex++;
                 while (lastNonEqualIndex > firstNonEqualIndex && movedSequences[lastNonEqualIndex].CorrelationStatus != CorrelationStatus.Equal)
@@ -2864,7 +2864,7 @@ namespace OpenXmlPowerTools
                     {
                         if (!movedSequencesListWithDeletedSequences.Contains(movedSequences))
                             movedSequencesListWithDeletedSequences.Add(movedSequences);
-                    } 
+                    }
 
                     // consider all atoms in the moved sequences as moved (including inserted and deleted atoms inside the moved sequences)
                     if (cs.ComparisonUnitArray1 != null)
@@ -2911,7 +2911,7 @@ namespace OpenXmlPowerTools
             restoreComparisonUnitAtomsUnids(deletedComparisonUnitAtoms);
 
             // Deleted parts inside the moved sequences should be handled in a very special way.
-            // Rather than marked as deleted in the source run, they should be moved to the target run 
+            // Rather than marked as deleted in the source run, they should be moved to the target run
             // and then marked as deleted in the target run.
 
             foreach (var movedSequences in movedSequencesListWithDeletedSequences)
@@ -2920,7 +2920,7 @@ namespace OpenXmlPowerTools
                 {
                     if (cs.CorrelationStatus == CorrelationStatus.Deleted)
                     {
-                        // 
+                        //
                     }
                 }
             }
@@ -3042,7 +3042,7 @@ namespace OpenXmlPowerTools
             OpenXmlPart footnotesEndnotesPart,
             XName footnoteEndnoteElementName,
             WmlComparerSettings settings,
-            WmlComparerInternalSettings internalSettings    
+            WmlComparerInternalSettings internalSettings
         )
         {
             if (footnotesEndnotesPart == null)
@@ -3163,9 +3163,9 @@ namespace OpenXmlPowerTools
         }
 
         private static void AddSha1HashToBlockLevelContent(
-            OpenXmlPart part, 
-            XElement contentParent, 
-            WmlComparerSettings settings, 
+            OpenXmlPart part,
+            XElement contentParent,
+            WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -3222,9 +3222,9 @@ namespace OpenXmlPowerTools
         };
 
         private static XElement CloneBlockLevelContentForHashing(
-            OpenXmlPart mainDocumentPart, 
-            XNode node, 
-            bool includeRelatedParts, 
+            OpenXmlPart mainDocumentPart,
+            XNode node,
+            bool includeRelatedParts,
             WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
@@ -3235,9 +3235,9 @@ namespace OpenXmlPowerTools
         }
 
         private static object CloneBlockLevelContentForHashingInternal(
-            OpenXmlPart mainDocumentPart, 
-            XNode node, 
-            bool includeRelatedParts, 
+            OpenXmlPart mainDocumentPart,
+            XNode node,
+            bool includeRelatedParts,
             WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
@@ -4179,7 +4179,7 @@ namespace OpenXmlPowerTools
 
                     // need to group by corr stat
                     var groupedChildren = g
-                        .GroupBy(gc =>
+                        .GroupAdjacent(gc =>
                         {
                             var sb = new StringBuilder();
                             if (level < (gc.AncestorElements.Length - 1))
@@ -4260,7 +4260,7 @@ namespace OpenXmlPowerTools
                         var newRunAttributes = ancestorBeingConstructed.Attributes().Where(a => a.Name.Namespace != PtOpenXml.pt);
                         if (settings.TrackRunsSourceIndexes && ancestorBeingConstructed.Attribute(PtOpenXml.Index) != null)
                         {
-                            if (Status == CorrelationStatus.Equal) 
+                            if (Status == CorrelationStatus.Equal)
                             {
                                 // get the list if the all unique Index attributes of the allAncestorBeingConstructedBefore
                                 var allAncestorBeingConstructedBeforeIndexes = allAncestorBeingConstructedBefore
@@ -4271,14 +4271,14 @@ namespace OpenXmlPowerTools
                                     new XAttribute(PtOpenXml.SourceIndex1, string.Join(WordprocessingMLUtil.AttributeValueSeparator, allAncestorBeingConstructedBeforeIndexes)),
                                     new XAttribute(PtOpenXml.SourceIndex2, ancestorBeingConstructed.Attribute(PtOpenXml.Index).Value)
                                 });
-                            } 
-                            else if (Status == CorrelationStatus.Inserted) 
+                            }
+                            else if (Status == CorrelationStatus.Inserted)
                             {
                                 newRunAttributes = newRunAttributes.Concat(new [] {
                                     new XAttribute(PtOpenXml.SourceIndex2, ancestorBeingConstructed.Attribute(PtOpenXml.Index).Value)
                                 });
-                            } 
-                            else if (Status == CorrelationStatus.Deleted) 
+                            }
+                            else if (Status == CorrelationStatus.Deleted)
                             {
                                 newRunAttributes = newRunAttributes.Concat(new [] {
                                     new XAttribute(PtOpenXml.SourceIndex1, ancestorBeingConstructed.Attribute(PtOpenXml.Index).Value)
@@ -6519,9 +6519,9 @@ namespace OpenXmlPowerTools
         };
 
         internal static ComparisonUnitAtom[] CreateComparisonUnitAtomList(
-            OpenXmlPart part, 
-            XElement contentParent, 
-            WmlComparerSettings settings, 
+            OpenXmlPart part,
+            XElement contentParent,
+            WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -6701,9 +6701,9 @@ namespace OpenXmlPowerTools
         }
 
         private static List<ComparisonUnitAtom> CreateComparisonUnitAtomListInternal(
-            OpenXmlPart part, 
-            XElement contentParent, 
-            WmlComparerSettings settings, 
+            OpenXmlPart part,
+            XElement contentParent,
+            WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -6721,9 +6721,9 @@ namespace OpenXmlPowerTools
         };
 
         private static void CreateComparisonUnitAtomListRecurse(
-            OpenXmlPart part, 
-            XElement element, 
-            List<ComparisonUnitAtom> comparisonUnitAtomList, 
+            OpenXmlPart part,
+            XElement element,
+            List<ComparisonUnitAtom> comparisonUnitAtomList,
             WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
@@ -6820,9 +6820,9 @@ namespace OpenXmlPowerTools
         }
 
         private static void AnnotateElementWithProps(
-            OpenXmlPart part, XElement element, 
-            List<ComparisonUnitAtom> comparisonUnitAtomList, 
-            XName[] childElementPropertyNames, 
+            OpenXmlPart part, XElement element,
+            List<ComparisonUnitAtom> comparisonUnitAtomList,
+            XName[] childElementPropertyNames,
             WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
             )
@@ -7029,24 +7029,24 @@ namespace OpenXmlPowerTools
         private readonly XElement MergeStatusElement;
         public string MergeStatus;
         public int MergeIteration = -1;
-        
+
         // DraftCheck
         public string MoveFromUnid;
         public string MoveToUnid;
 
         public ComparisonUnitAtom(
-            XElement contentElement, 
-            XElement[] ancestorElements, 
-            OpenXmlPart part, 
-            WmlComparerSettings settings, 
+            XElement contentElement,
+            XElement[] ancestorElements,
+            OpenXmlPart part,
+            WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
-        )   
+        )
         {
             ContentElement = contentElement;
             AncestorElements = ancestorElements;
             Part = part;
             RevTrackElement = GetRevisionTrackingElementFromAncestors(contentElement, AncestorElements);
-            
+
             if (internalSettings.MergeMode)
                 MergeStatusElement = GetMergeStatusElementFromAncestors(AncestorElements);
             if (MergeStatusElement != null)
@@ -7080,9 +7080,9 @@ namespace OpenXmlPowerTools
         }
 
         private string GetSha1HashStringForElement(
-            XElement contentElement, 
+            XElement contentElement,
             XElement mergeStatusElement,
-            WmlComparerSettings settings, 
+            WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
             )
         {
@@ -7408,7 +7408,7 @@ namespace OpenXmlPowerTools
                 throw new PlatformNotSupportedException("Unsupported OS platform");
             }
 
-            
+
         }
     }
 
