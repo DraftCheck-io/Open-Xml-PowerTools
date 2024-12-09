@@ -5968,7 +5968,7 @@ listSeparator
         public static XName MoveFromUnid = pt + "MoveFromUnid";
         public static XName MoveToUnid = pt + "MoveToUnid";
         public static XName MergeStatus = pt + "MergeStatus";
-        public static XName MergeIteration = pt + "MergeIteration";
+        public static XName MergeIterations = pt + "MergeIterations";
     }
 
     public static class Xhtml

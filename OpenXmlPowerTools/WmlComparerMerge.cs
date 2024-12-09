@@ -47,6 +47,7 @@ namespace OpenXmlPowerTools
                         var internalSettings = new WmlComparerInternalSettings()
                         {
                             PreProcessMarkupInOriginal = false,
+                            RevisionsAmount = revisedDocumentInfoList2.Count,
                             MergeMode = true, 
                             MergeIteration = i,
                             // for last item, we need to resolve all accumulated tracking changes
@@ -90,11 +91,27 @@ namespace OpenXmlPowerTools
         {
             doc.Root
                 .Descendants()
-                .Where(e => e.Attribute(PtOpenXml.Status) != null && e.Attribute(PtOpenXml.MergeStatus) == null)
+                .Where(e => e.Attribute(PtOpenXml.Status) != null)
                 .ToList()
                 .ForEach(e => {
-                    e.SetAttributeValue(PtOpenXml.MergeStatus, e.Attribute(PtOpenXml.Status).Value);
-                    e.SetAttributeValue(PtOpenXml.MergeIteration, mergeIteration);
+                    var status = (string) e.Attribute(PtOpenXml.Status);
+                    var mergeStatus = (string) e.Attribute(PtOpenXml.MergeStatus);
+
+                    if (mergeStatus == null || status == "Deleted")
+                    {
+                        e.SetAttributeValue(PtOpenXml.MergeStatus, status);
+                        
+                        var assignedMergeIterations = (string) e.Attribute(PtOpenXml.MergeIterations);
+                        if (assignedMergeIterations != null)
+                        {
+                            assignedMergeIterations += "," + mergeIteration;
+                        } 
+                        else
+                        {
+                            assignedMergeIterations = mergeIteration.ToString();
+                        }
+                        e.SetAttributeValue(PtOpenXml.MergeIterations, assignedMergeIterations);
+                    }
                 });
         }
 

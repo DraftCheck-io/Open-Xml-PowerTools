@@ -75,10 +75,12 @@ namespace OpenXmlPowerTools
     {
         public bool PreProcessMarkupInOriginal = false;
         public int StartingIdForFootnotesEndnotes = 1;
+        public int RevisionsAmount = 1;
         public bool ResolveTrackingChanges = true;
         public bool MergeMode = false;
         public int MergeIteration = 0;
         public string[] MergeRevisors;
+        public string AuthorForAllRevisions = "Everyone";
 
         public WmlComparerInternalSettings()
         {
@@ -1410,6 +1412,20 @@ namespace OpenXmlPowerTools
                     .ToList();
             }
 
+            string getRevisionAuthor(string iterationsStr)
+            {
+                var iterations = iterationsStr
+                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(i => int.Parse(i))
+                    .Select(i => (i >= 0 && i <= internalSettings.MergeRevisors.Count()) 
+                        ? internalSettings.MergeRevisors.ElementAt(i) 
+                        : settings.AuthorForRevisions
+                    );
+                return (iterations.Count() < internalSettings.RevisionsAmount)
+                    ? string.Join(", ", iterations)
+                    : internalSettings.AuthorForAllRevisions;
+            }
+
             XElement element = node as XElement;
             if (element != null)
             {
@@ -1438,14 +1454,12 @@ namespace OpenXmlPowerTools
                     if (moveFromUnid != null && moveToUnid != null)
                         throw new OpenXmlPowerToolsException("Internal error - have both move from and move to ranges in the same run.");
 
-                    var mergeIterationsList = getRunDescendantsAttributeValues(element, PtOpenXml.MergeIteration);
+                    var mergeIterationsList = getRunDescendantsAttributeValues(element, PtOpenXml.MergeIterations);
                     if (mergeIterationsList.Count() > 1)
                         throw new OpenXmlPowerToolsException("Internal error - have more than one different merge iterations in the same run.");     
-                    var mergeIteration = int.Parse(mergeIterationsList.FirstOrDefault() ?? "-1");
+                    var mergeIterations = mergeIterationsList.FirstOrDefault();
 
-                    var author = (mergeIteration >= 0 && mergeIteration <= internalSettings.MergeRevisors.Count())
-                        ? internalSettings.MergeRevisors[mergeIteration]
-                        : settings.AuthorForRevisions;
+                    var author = getRevisionAuthor(mergeIterations);
 
                     if (statusList.First() == "Deleted")
                     {
@@ -1509,13 +1523,8 @@ namespace OpenXmlPowerTools
                         .Count();
                     var moved = movedFromRunsCount == paragraphRuns.Count() || movedToRunsCount == paragraphRuns.Count();
 
-                    var author = settings.AuthorForRevisions;
-                    if (element.Attribute(PtOpenXml.MergeIteration) != null)
-                    {
-                        var mergeIteration = (int)element.Attribute(PtOpenXml.MergeIteration);
-                        if (mergeIteration >= 0 && mergeIteration <= internalSettings.MergeRevisors.Count())
-                            author = internalSettings.MergeRevisors[mergeIteration];
-                    }
+                    var mergeIterations = (string) element.Attribute(PtOpenXml.MergeIterations);
+                    var author = getRevisionAuthor(mergeIterations);
 
                     var pPr = new XElement(element);
                     if (status == "Deleted")
@@ -3466,7 +3475,8 @@ namespace OpenXmlPowerTools
                 {
                     var mergedAncestorsCount = xt
                         .Ancestors()
-                        .Where(e => e.Attribute(PtOpenXml.MergeStatus) != null)
+                        // "Deleted" content should be a part of the comparison; we want to detect if it was deleted by multiple reviewers
+                        .Where(e => (string) e.Attribute(PtOpenXml.MergeStatus) == "Inserted") 
                         .Count();
                     // make sure the content is unique to avoid SHA1 hash matching
                     if (mergedAncestorsCount > 0)
@@ -4194,8 +4204,8 @@ namespace OpenXmlPowerTools
                                 sb.Append("|mf").Append(gc.MoveFromUnid);
                             if (gc.MoveToUnid != null)
                                 sb.Append("|mt").Append(gc.MoveToUnid);
-                            if (gc.MergeIteration != -1)
-                                sb.Append("|mi").Append(gc.MergeIteration);
+                            if (gc.MergeIterations != null)
+                                sb.Append("|mi").Append(gc.MergeIterations);
                             return sb.ToString();
                         })
                         .ToList();
@@ -4304,7 +4314,7 @@ namespace OpenXmlPowerTools
                                 var MoveFromUnid = gc.First().MoveFromUnid;
                                 var MoveToUnid = gc.First().MoveToUnid;
                                 var MergeStatus = gc.First().MergeStatus;
-                                var MergeIteration = gc.First().MergeIteration;
+                                var MergeIterations = gc.First().MergeIterations;
                                 XElement el;
 
                                 if (del)
@@ -4328,8 +4338,8 @@ namespace OpenXmlPowerTools
                                     el.Add(new XAttribute(PtOpenXml.MoveToUnid, MoveToUnid));
                                 if (MergeStatus != null)
                                     el.Add(new XAttribute(PtOpenXml.MergeStatus, MergeStatus));
-                                if (MergeIteration != -1)
-                                    el.Add(new XAttribute(PtOpenXml.MergeIteration, MergeIteration));
+                                if (MergeIterations != null)
+                                    el.Add(new XAttribute(PtOpenXml.MergeIterations, MergeIterations));
                                 return (object)el;
                             })
                             .ToList();
@@ -7028,7 +7038,7 @@ namespace OpenXmlPowerTools
         public XElement RevTrackElement;
         private readonly XElement MergeStatusElement;
         public string MergeStatus;
-        public int MergeIteration = -1;
+        public string MergeIterations;
         
         // DraftCheck
         public string MoveFromUnid;
@@ -7051,8 +7061,8 @@ namespace OpenXmlPowerTools
                 MergeStatusElement = GetMergeStatusElementFromAncestors(AncestorElements);
             if (MergeStatusElement != null)
             {
-                MergeStatus = (string)MergeStatusElement.Attribute(PtOpenXml.MergeStatus);
-                MergeIteration = (int)MergeStatusElement.Attribute(PtOpenXml.MergeIteration);
+                MergeStatus = (string) MergeStatusElement.Attribute(PtOpenXml.MergeStatus);
+                MergeIterations = (string) MergeStatusElement.Attribute(PtOpenXml.MergeIterations);
             }
 
             if (RevTrackElement == null)
@@ -7090,7 +7100,8 @@ namespace OpenXmlPowerTools
             if (internalSettings.MergeMode)
             {
                 // make sure the content is unique to avoid SHA1 hash matching
-                if (mergeStatusElement != null)
+                // "Deleted" content should be a part of the compariosn; we want to detect if it was removed by multiple reviewers
+                if (mergeStatusElement != null && (string) mergeStatusElement.Attribute(PtOpenXml.MergeStatus) == "Inserted")
                     text = Util.GenerateUnid();
             }
             if (settings.CaseInsensitive)
