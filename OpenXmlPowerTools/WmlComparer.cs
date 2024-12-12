@@ -1414,6 +1414,8 @@ namespace OpenXmlPowerTools
 
             string getRevisionAuthor(string iterationsStr)
             {
+                if (iterationsStr == null)
+                    return settings.AuthorForRevisions;
                 var iterations = iterationsStr
                     .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(i => int.Parse(i))
