@@ -4191,7 +4191,7 @@ namespace OpenXmlPowerTools
 
                     // need to group by corr stat
                     var groupedChildren = g
-                        .GroupBy(gc =>
+                        .GroupAdjacent(gc =>
                         {
                             var sb = new StringBuilder();
                             if (level < (gc.AncestorElements.Length - 1))
