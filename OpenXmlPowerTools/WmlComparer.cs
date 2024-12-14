@@ -51,6 +51,7 @@ namespace OpenXmlPowerTools
     public class WmlComparerSettings
     {
         public char[] WordSeparators;
+        public string AuthorForOriginal = "Author";
         public string AuthorForRevisions = "Open-Xml-PowerTools";
         public string DateTimeForRevisions = DateTime.Now.ToString("o");
         public double DetailThreshold = 0.15;
@@ -1414,15 +1415,20 @@ namespace OpenXmlPowerTools
 
             string getRevisionAuthor(string iterationsStr)
             {
-                if (iterationsStr == null)
+                if (string.IsNullOrEmpty(iterationsStr))
                     return settings.AuthorForRevisions;
                 var iterations = iterationsStr
                     .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(i => int.Parse(i))
-                    .Select(i => (i >= 0 && i <= internalSettings.MergeRevisors.Count()) 
-                        ? internalSettings.MergeRevisors.ElementAt(i) 
-                        : settings.AuthorForRevisions
-                    );
+                    .Select(i => {
+                        if (i >= 0 && i <= internalSettings.MergeRevisors.Count()) 
+                        {
+                            var revisor = internalSettings.MergeRevisors.ElementAt(i);
+                            if (!string.IsNullOrEmpty(revisor))
+                                return revisor;
+                        }
+                        return settings.AuthorForRevisions;
+                    });
                 return (iterations.Count() < internalSettings.RevisionsAmount)
                     ? string.Join(", ", iterations)
                     : internalSettings.AuthorForAllRevisions;
