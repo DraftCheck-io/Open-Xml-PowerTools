@@ -87,7 +87,7 @@ namespace OpenXmlPowerTools
             return merged;
         }
 
-        private static void StoreChangeTrackingStatusesForMerge(XDocument doc, int mergeIteration)
+        private static void StoreChangeTrackingStatusForMerge(XDocument doc, int mergeIteration)
         {
             doc.Root
                 .Descendants()
@@ -115,5 +115,16 @@ namespace OpenXmlPowerTools
                 });
         }
 
+        private static void RestoreChangeTrackingStatusForMerge(XDocument doc)
+        {
+            doc.Root
+                .Descendants()
+                .Where(e => e.Attribute(PtOpenXml.MergeStatus) != null)
+                .ToList()
+                .ForEach(e => {
+                    var status = (string) e.Attribute(PtOpenXml.MergeStatus);
+                    e.SetAttributeValue(PtOpenXml.Status, status);
+                });
+        }
     }
 }

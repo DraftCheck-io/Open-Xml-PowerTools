@@ -871,12 +871,13 @@ namespace OpenXmlPowerTools
                             new XElement(W.body, newBodyChildren)));
                     
                     if (internalSettings.MergeMode) 
-                    {
-                        StoreChangeTrackingStatusesForMerge(newXDoc, internalSettings.MergeIteration);
-                    }
+                        StoreChangeTrackingStatusForMerge(newXDoc, internalSettings.MergeIteration);
 
                     if (internalSettings.ResolveTrackingChanges) 
                     {
+                        if (internalSettings.MergeMode)
+                            RestoreChangeTrackingStatusForMerge(newXDoc);
+
                         MarkContentAsDeletedOrInserted(newXDoc, settings, internalSettings);
                         CoalesceAdjacentRunsWithIdenticalFormatting(newXDoc);
                     } 
@@ -1429,7 +1430,7 @@ namespace OpenXmlPowerTools
                         }
                         return settings.AuthorForRevisions;
                     });
-                return (iterations.Count() < internalSettings.RevisionsAmount)
+                return (iterations.Count() < internalSettings.RevisionsAmount || internalSettings.RevisionsAmount == 1)
                     ? string.Join(", ", iterations)
                     : internalSettings.AuthorForAllRevisions;
             }
@@ -2485,6 +2486,8 @@ namespace OpenXmlPowerTools
                                         ComparisonUnitAtomBefore = before,
                                         MoveFromUnid = after.MoveFromUnid,
                                         MoveToUnid = after.MoveToUnid,
+                                        MergeStatus = before.MergeStatus,
+                                        MergeIterations = before.MergeIterations,
                                     };
                                 })
                             .ToList();
@@ -2512,6 +2515,8 @@ namespace OpenXmlPowerTools
                                     CorrelationStatus = correlationStatus,
                                     MoveFromUnid = ca.MoveFromUnid,
                                     MoveToUnid = ca.MoveToUnid,
+                                    MergeStatus = ca.MergeStatus,
+                                    MergeIterations = ca.MergeIterations,
                                 };
                             });
 
@@ -4201,19 +4206,24 @@ namespace OpenXmlPowerTools
                         {
                             var sb = new StringBuilder();
                             if (level < (gc.AncestorElements.Length - 1))
-                            {
                                 sb.Append(gc.AncestorUnids[level + 1]);
-                            }
+
                             if (gc.AncestorElements.Skip(level).Any(ae => ae.Name == W.txbxContent))
                                 sb.Append("|").Append(CorrelationStatus.Equal.ToString());
                             else
                                 sb.Append("|").Append(gc.CorrelationStatus.ToString());
+
                             if (gc.MoveFromUnid != null)
                                 sb.Append("|mf").Append(gc.MoveFromUnid);
+
                             if (gc.MoveToUnid != null)
                                 sb.Append("|mt").Append(gc.MoveToUnid);
-                            if (gc.MergeIterations != null)
+
+                            if (gc.ComparisonUnitAtomBefore?.MergeIterations != null)
+                                sb.Append("|mi").Append(gc.ComparisonUnitAtomBefore.MergeIterations);
+                            else if (gc.MergeIterations != null)
                                 sb.Append("|mi").Append(gc.MergeIterations);
+
                             return sb.ToString();
                         })
                         .ToList();
@@ -4321,8 +4331,8 @@ namespace OpenXmlPowerTools
                                 var ins = gc.First().CorrelationStatus == CorrelationStatus.Inserted;
                                 var MoveFromUnid = gc.First().MoveFromUnid;
                                 var MoveToUnid = gc.First().MoveToUnid;
-                                var MergeStatus = gc.First().MergeStatus;
-                                var MergeIterations = gc.First().MergeIterations;
+                                var MergeStatus = gc.First().ComparisonUnitAtomBefore?.MergeStatus ?? gc.First().MergeStatus;
+                                var MergeIterations = gc.First().ComparisonUnitAtomBefore?.MergeIterations ?? gc.First().MergeIterations;
                                 XElement el;
 
                                 if (del)
