@@ -82,14 +82,13 @@ namespace OpenXmlPowerTools
         public int MergeIteration = 0;
         public string[] MergeRevisors;
         public string AuthorForAllRevisions = "Everyone";
+        public WmlComparerSettings ComparerSettings;
+        public WmlComparerMergeSettings MergeSettings;
 
-        public WmlComparerInternalSettings()
+        public WmlComparerInternalSettings(WmlComparerSettings comparerSettings, WmlComparerMergeSettings mergeSettings = null)
         {
-        }
-
-        public WmlComparerInternalSettings(bool preProcessMarkupInOriginal)
-        {
-            PreProcessMarkupInOriginal = preProcessMarkupInOriginal;
+            ComparerSettings = comparerSettings;
+            MergeSettings = mergeSettings;
         }
     }
     
@@ -123,7 +122,11 @@ namespace OpenXmlPowerTools
 
         public static WmlDocument Compare(WmlDocument source1, WmlDocument source2, WmlComparerSettings settings)
         {
-            return CompareInternal(source1, source2, settings, new WmlComparerInternalSettings(true));
+            var internalSettings = new WmlComparerInternalSettings(settings)
+            {
+                PreProcessMarkupInOriginal = true,
+            };
+            return CompareInternal(source1, source2, settings, internalSettings);
         }
 
         private static WmlDocument CompareInternal(
@@ -846,6 +849,11 @@ namespace OpenXmlPowerTools
                 DocxComparerUtil.NotePad(sbs);
             }
 
+            if (internalSettings.ResolveTrackingChanges && internalSettings.MergeSettings.WrapTrackingChanges)
+            {
+                MarkInsertedDeletedComparisonUnitAtomsBounds(listOfComparisonUnitAtoms, internalSettings);
+            }
+
             // and then finally can generate the document with revisions
             using (MemoryStream ms = new MemoryStream())
             {
@@ -862,7 +870,7 @@ namespace OpenXmlPowerTools
                     // ======================================
                     // The following produces a new valid WordprocessingML document from the listOfComparisonUnitAtoms
                     var newBodyChildren = ProduceNewWmlMarkupFromCorrelatedSequence(wDocWithRevisions.MainDocumentPart,
-                        listOfComparisonUnitAtoms, settings);
+                        listOfComparisonUnitAtoms, settings, internalSettings);
 
                     XDocument newXDoc = new XDocument();
                     newXDoc.Add(
@@ -1786,7 +1794,7 @@ namespace OpenXmlPowerTools
                         // in the case where a row is inserted, not necessary to hack - the inserted row ID will do as well.
                         AssembleAncestorUnidsInOrderToRebuildXmlTreeProperly(fnListOfComparisonUnitAtoms);
 
-                        var newFootnoteEndnoteChildren = ProduceNewWmlMarkupFromCorrelatedSequence(partToUseAfter, fnListOfComparisonUnitAtoms, settings);
+                        var newFootnoteEndnoteChildren = ProduceNewWmlMarkupFromCorrelatedSequence(partToUseAfter, fnListOfComparisonUnitAtoms, settings, internalSettings);
                         var tempElement = new XElement(W.body, newFootnoteEndnoteChildren);
                         var hasFootnoteReference = tempElement.Descendants(W.r).Any(r =>
                         {
@@ -1880,7 +1888,7 @@ namespace OpenXmlPowerTools
                     AssembleAncestorUnidsInOrderToRebuildXmlTreeProperly(fnListOfComparisonUnitAtoms);
 
                     var newFootnoteEndnoteChildren = ProduceNewWmlMarkupFromCorrelatedSequence(partToUseAfter,
-                        fnListOfComparisonUnitAtoms, settings);
+                        fnListOfComparisonUnitAtoms, settings, internalSettings);
                     var tempElement = new XElement(W.body, newFootnoteEndnoteChildren);
                     var hasFootnoteReference = tempElement.Descendants(W.r).Any(r =>
                     {
@@ -1978,7 +1986,7 @@ namespace OpenXmlPowerTools
                         AssembleAncestorUnidsInOrderToRebuildXmlTreeProperly(fnListOfComparisonUnitAtoms);
 
                         var newFootnoteEndnoteChildren = ProduceNewWmlMarkupFromCorrelatedSequence(partToUseBefore,
-                            fnListOfComparisonUnitAtoms, settings);
+                            fnListOfComparisonUnitAtoms, settings, internalSettings);
                         var tempElement = new XElement(W.body, newFootnoteEndnoteChildren);
                         var hasFootnoteReference = tempElement.Descendants(W.r).Any(r =>
                         {
@@ -4035,11 +4043,13 @@ namespace OpenXmlPowerTools
 
         private static object ProduceNewWmlMarkupFromCorrelatedSequence(OpenXmlPart part,
             IEnumerable<ComparisonUnitAtom> comparisonUnitAtomList,
-            WmlComparerSettings settings)
+            WmlComparerSettings settings,
+            WmlComparerInternalSettings internalSettings
+        )
         {
             // fabricate new MainDocumentPart from correlatedSequence
             s_MaxId = 0;
-            var newBodyChildren = CoalesceRecurse(part, comparisonUnitAtomList, 0, settings);
+            var newBodyChildren = CoalesceRecurse(part, comparisonUnitAtomList, 0, settings, internalSettings);
             return newBodyChildren;
         }
 
@@ -4159,7 +4169,46 @@ namespace OpenXmlPowerTools
                 cp.PutXDocument();
         }
 
-        private static object CoalesceRecurse(OpenXmlPart part, IEnumerable<ComparisonUnitAtom> list, int level, WmlComparerSettings settings)
+        private static IList<IGrouping<string, ComparisonUnitAtom>> GroupAdjucentComparisonUnitAtomsByTrackedChange(IEnumerable<ComparisonUnitAtom> comparisonUnitAtomList, int level)
+        {
+            // if level == -1, get the closest (deepest) AncestorElement
+            return comparisonUnitAtomList
+                .GroupAdjacent(gc =>
+                {
+                    var sb = new StringBuilder();
+
+                    if (level == -1 && gc.AncestorElements.Length > 0)
+                        sb.Append(gc.AncestorUnids.Last());
+                    else if (level < (gc.AncestorElements.Length - 1))
+                        sb.Append(gc.AncestorUnids[level + 1]);
+
+                    if (level != -1 && gc.AncestorElements.Skip(level).Any(ae => ae.Name == W.txbxContent))
+                        sb.Append("|").Append(CorrelationStatus.Equal.ToString());
+                    else
+                        sb.Append("|").Append(gc.CorrelationStatus.ToString());
+
+                    if (gc.MoveFromUnid != null)
+                        sb.Append("|mf").Append(gc.MoveFromUnid);
+
+                    if (gc.MoveToUnid != null)
+                        sb.Append("|mt").Append(gc.MoveToUnid);
+
+                    if (gc.ComparisonUnitAtomBefore?.MergeIterations != null)
+                        sb.Append("|mi").Append(gc.ComparisonUnitAtomBefore.MergeIterations);
+                    else if (gc.MergeIterations != null)
+                        sb.Append("|mi").Append(gc.MergeIterations);
+
+                    return sb.ToString();
+                })
+                .ToList();
+        }
+
+        private static object CoalesceRecurse(
+            OpenXmlPart part, IEnumerable<ComparisonUnitAtom> list, 
+            int level, 
+            WmlComparerSettings settings,
+            WmlComparerInternalSettings internalSettings
+            )
         {
             var grouped = list.GroupBy(ca =>
             {
@@ -4201,32 +4250,7 @@ namespace OpenXmlPowerTools
                     var allAncestorBeingConstructedBefore = g.Select(ca => ca.ComparisonUnitAtomBefore?.AncestorElements[level]).ToList();
 
                     // need to group by corr stat
-                    var groupedChildren = g
-                        .GroupAdjacent(gc =>
-                        {
-                            var sb = new StringBuilder();
-                            if (level < (gc.AncestorElements.Length - 1))
-                                sb.Append(gc.AncestorUnids[level + 1]);
-
-                            if (gc.AncestorElements.Skip(level).Any(ae => ae.Name == W.txbxContent))
-                                sb.Append("|").Append(CorrelationStatus.Equal.ToString());
-                            else
-                                sb.Append("|").Append(gc.CorrelationStatus.ToString());
-
-                            if (gc.MoveFromUnid != null)
-                                sb.Append("|mf").Append(gc.MoveFromUnid);
-
-                            if (gc.MoveToUnid != null)
-                                sb.Append("|mt").Append(gc.MoveToUnid);
-
-                            if (gc.ComparisonUnitAtomBefore?.MergeIterations != null)
-                                sb.Append("|mi").Append(gc.ComparisonUnitAtomBefore.MergeIterations);
-                            else if (gc.MergeIterations != null)
-                                sb.Append("|mi").Append(gc.MergeIterations);
-
-                            return sb.ToString();
-                        })
-                        .ToList();
+                    var groupedChildren = GroupAdjucentComparisonUnitAtomsByTrackedChange(g, level);
 
                     if (ancestorBeingConstructed.Name == W.p)
                     {
@@ -4246,7 +4270,7 @@ namespace OpenXmlPowerTools
                                     });
                                 else
                                 {
-                                    return CoalesceRecurse(part, gc, level + 1, settings);
+                                    return CoalesceRecurse(part, gc, level + 1, settings, internalSettings);
                                 }
                             })
                             .ToList();
@@ -4277,7 +4301,7 @@ namespace OpenXmlPowerTools
                                     });
                                 else
                                 {
-                                    return CoalesceRecurse(part, gc, level + 1, settings);
+                                    return CoalesceRecurse(part, gc, level + 1, settings, internalSettings);
                                 }
                             })
                             .ToList();
@@ -4326,7 +4350,14 @@ namespace OpenXmlPowerTools
                         var newChildElements = groupedChildren
                             .Select(gc =>
                             {
-                                var textOfTextElement = gc.Select(gce => gce.ContentElement.Value).StringConcatenate();
+                                var textOfTextElement = gc.Select(gce => {
+                                    var sb = new StringBuilder(gce.ContentElement.Value ?? "");
+                                    if (gce.ChangeGroupStart && gce.ChangeGroupRequiresHighlight)
+                                        sb.Insert(0, internalSettings.MergeSettings.WrapTrackingChangesSettings.FragmentStart); 
+                                    if (gce.ChangeGroupEnd && gce.ChangeGroupRequiresHighlight)
+                                        sb.Append(internalSettings.MergeSettings.WrapTrackingChangesSettings.FragmentEnd);
+                                    return sb.ToString();
+                                }).StringConcatenate();
                                 var del = gc.First().CorrelationStatus == CorrelationStatus.Deleted;
                                 var ins = gc.First().CorrelationStatus == CorrelationStatus.Inserted;
                                 var MoveFromUnid = gc.First().MoveFromUnid;
@@ -4496,22 +4527,22 @@ namespace OpenXmlPowerTools
                     }
 
                     if (ancestorBeingConstructed.Name == W.tbl)
-                        return ReconstructElement(part, g, ancestorBeingConstructed, W.tblPr, W.tblGrid, null, level, settings);
+                        return ReconstructElement(part, g, ancestorBeingConstructed, W.tblPr, W.tblGrid, null, level, settings, internalSettings);
                     if (ancestorBeingConstructed.Name == W.tr)
-                        return ReconstructElement(part, g, ancestorBeingConstructed, W.trPr, null, null, level, settings);
+                        return ReconstructElement(part, g, ancestorBeingConstructed, W.trPr, null, null, level, settings, internalSettings);
                     if (ancestorBeingConstructed.Name == W.tc)
-                        return ReconstructElement(part, g, ancestorBeingConstructed, W.tcPr, null, null, level, settings);
+                        return ReconstructElement(part, g, ancestorBeingConstructed, W.tcPr, null, null, level, settings, internalSettings);
                     if (ancestorBeingConstructed.Name == W.sdt)
-                        return ReconstructElement(part, g, ancestorBeingConstructed, W.sdtPr, W.sdtEndPr, null, level, settings);
+                        return ReconstructElement(part, g, ancestorBeingConstructed, W.sdtPr, W.sdtEndPr, null, level, settings, internalSettings);
                     if (ancestorBeingConstructed.Name == W.pict)
-                        return ReconstructElement(part, g, ancestorBeingConstructed, VML.shapetype, null, null, level, settings);
+                        return ReconstructElement(part, g, ancestorBeingConstructed, VML.shapetype, null, null, level, settings, internalSettings);
                     if (ancestorBeingConstructed.Name == VML.shape)
-                        return ReconstructElement(part, g, ancestorBeingConstructed, W10.wrap, null, null, level, settings);
+                        return ReconstructElement(part, g, ancestorBeingConstructed, W10.wrap, null, null, level, settings, internalSettings);
                     if (ancestorBeingConstructed.Name == W._object)
-                        return ReconstructElement(part, g, ancestorBeingConstructed, VML.shapetype, VML.shape, O.OLEObject, level, settings);
+                        return ReconstructElement(part, g, ancestorBeingConstructed, VML.shapetype, VML.shape, O.OLEObject, level, settings, internalSettings);
                     if (ancestorBeingConstructed.Name == W.ruby)
-                        return ReconstructElement(part, g, ancestorBeingConstructed, W.rubyPr, null, null, level, settings);
-                    return (object)ReconstructElement(part, g, ancestorBeingConstructed, null, null, null, level, settings);
+                        return ReconstructElement(part, g, ancestorBeingConstructed, W.rubyPr, null, null, level, settings, internalSettings);
+                    return (object)ReconstructElement(part, g, ancestorBeingConstructed, null, null, null, level, settings, internalSettings);
                 })
                 .ToList();
             return elementList;
@@ -4611,10 +4642,19 @@ namespace OpenXmlPowerTools
             return null;
         }
 
-        private static XElement ReconstructElement(OpenXmlPart part, IGrouping<string, ComparisonUnitAtom> g, XElement ancestorBeingConstructed, XName props1XName,
-            XName props2XName, XName props3XName, int level, WmlComparerSettings settings)
+        private static XElement ReconstructElement(
+            OpenXmlPart part, 
+            IGrouping<string, ComparisonUnitAtom> g, 
+            XElement ancestorBeingConstructed, 
+            XName props1XName,
+            XName props2XName, 
+            XName props3XName, 
+            int level, 
+            WmlComparerSettings settings,
+            WmlComparerInternalSettings internalSettings
+        )
         {
-            var newChildElements = CoalesceRecurse(part, g, level + 1, settings);
+            var newChildElements = CoalesceRecurse(part, g, level + 1, settings, internalSettings);
 
             object props1 = null;
             if (props1XName != null)
@@ -7054,13 +7094,19 @@ namespace OpenXmlPowerTools
         public ComparisonUnitAtom ComparisonUnitAtomBefore;
         public OpenXmlPart Part;
         public XElement RevTrackElement;
-        private readonly XElement MergeStatusElement;
-        public string MergeStatus;
-        public string MergeIterations;
         
         // DraftCheck
         public string MoveFromUnid;
         public string MoveToUnid;
+        public string MergeStatus;
+        public string MergeIterations;
+        public bool ChangeGroupStart = false;
+        public bool ChangeGroupEnd = false;
+        public string ChangeGroupUnid;
+        public bool ChangeGroupRequiresHighlight = false;
+
+
+        private readonly XElement MergeStatusElement;
 
         public ComparisonUnitAtom(
             XElement contentElement, 

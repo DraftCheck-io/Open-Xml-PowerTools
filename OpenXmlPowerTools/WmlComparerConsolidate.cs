@@ -59,7 +59,7 @@ namespace OpenXmlPowerTools
             // DraftCheck : temporary disable 
             settings.DetectContentMoves = false;
 
-            var internalSettings = new WmlComparerInternalSettings()
+            var internalSettings = new WmlComparerInternalSettings(settings)
             {
                 StartingIdForFootnotesEndnotes = 3000
             };

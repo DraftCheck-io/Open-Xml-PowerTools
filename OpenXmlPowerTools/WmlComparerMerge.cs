@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
 
@@ -9,7 +10,15 @@ namespace OpenXmlPowerTools
 {
     public class WmlComparerMergeSettings
     {
-        //
+        public bool WrapTrackingChanges = false;
+        public WmlComparerWrapTrackingChangesSettings WrapTrackingChangesSettings = new WmlComparerWrapTrackingChangesSettings();
+    }
+
+    public class WmlComparerWrapTrackingChangesSettings
+    {
+        public string FragmentStart = "[";
+        public string FragmentEnd = "]";
+        public int FragmentDistance = 10;
     }
 
     public static partial class WmlComparer
@@ -44,7 +53,7 @@ namespace OpenXmlPowerTools
                         var revisedDocumentInfo = revisedDocumentInfoList2[i];
                         var isLast = i == revisedDocumentInfoList2.Count - 1;
 
-                        var internalSettings = new WmlComparerInternalSettings()
+                        var internalSettings = new WmlComparerInternalSettings(settings, mergeSettings)
                         {
                             PreProcessMarkupInOriginal = false,
                             RevisionsAmount = revisedDocumentInfoList2.Count,
@@ -125,6 +134,126 @@ namespace OpenXmlPowerTools
                     var status = (string) e.Attribute(PtOpenXml.MergeStatus);
                     e.SetAttributeValue(PtOpenXml.Status, status);
                 });
+        }
+
+        class ComparisonInitAtomsGroupInfo
+        {
+            public IList<ComparisonUnitAtom> Atoms;
+            public string Status;
+            public int Position;
+            public int Size;
+        
+            public bool IsChanged { 
+                get => Status == "Deleted" || Status == "Inserted"; 
+            }
+        }
+
+        private static void MarkInsertedDeletedComparisonUnitAtomsBounds(
+            List<ComparisonUnitAtom> comparisonUnitAtoms,
+            WmlComparerInternalSettings internalSettings   
+        ) 
+        {
+            int getPrevChangedAtomsGroupPositionDistance(List<ComparisonInitAtomsGroupInfo> atomsGroups, int index)
+            {
+                var currentAtomGroup = atomsGroups[index];
+                for (var i = index - 1; i >= 0; i--)
+                {
+                    var atomGroup = atomsGroups[i];
+                    if (atomGroup.IsChanged)
+                    {
+                        return currentAtomGroup.Position - (atomGroup.Position + atomGroup.Size);
+                    }
+                }
+                return -1;
+                
+            }
+
+            int getNextChangedAtomsGroupPositionDistance(List<ComparisonInitAtomsGroupInfo> atomsGroups, int index)
+            {
+                var currentAtomGroup = atomsGroups[index];
+                for (var i = index + 1; i < atomsGroups.Count; i++)
+                {
+                    var atomGroup = atomsGroups[i];
+                    if (atomGroup.IsChanged)
+                    {
+                        return atomGroup.Position - (currentAtomGroup.Position + currentAtomGroup.Size);
+                    }
+                }
+                return -1;
+            }
+
+            comparisonUnitAtoms
+                // group atoms by paragraph
+                .GroupAdjacent(cua => 
+                    cua.AncestorElements
+                        .Select((ae, i) => new { Element = ae, Index = i })
+                        .Where(aei => aei.Element.Name == W.p)
+                        .Select(aei => cua.AncestorUnids[aei.Index])
+                        .FirstOrDefault()
+                    )
+                 .Where(g => g.Key != null)
+                 .ToList()
+                 .ForEach(paraGroup => {
+                    var position = 0;
+
+                    // group texts within each paragraphs by tracking changes
+                    var groups = GroupAdjucentComparisonUnitAtomsByTrackedChange(comparisonUnitAtoms, -1)
+                        .Select(group => {
+                            var spl = group.Key.Split('|');
+                            var status = spl[1];
+                            var g = new ComparisonInitAtomsGroupInfo() 
+                            {
+                                Atoms = group.ToList(),
+                                Status = status, 
+                                Position = position,
+                                Size = group.Count(), 
+                            };
+                            position += g.Size;
+                            return g;
+                        })
+                        .ToList();
+                    
+                    
+                    for (var i = 0; i < groups.Count; i++) 
+                    {
+                        var group = groups[i];
+
+                        if (group.IsChanged)
+                        {
+                            var changeGroupUnid = Util.GenerateUnid();
+
+                            var firstAtom = group.Atoms.FirstOrDefault(a => a.ContentElement.Name == W.t);
+                            if (firstAtom != null)
+                            {
+                                firstAtom.ChangeGroupStart = true;
+                                firstAtom.ChangeGroupUnid = changeGroupUnid;
+
+                                var prevChangedGroupDistance = getPrevChangedAtomsGroupPositionDistance(groups, i);
+                                if (prevChangedGroupDistance != -1 && 
+                                    prevChangedGroupDistance < internalSettings.MergeSettings.WrapTrackingChangesSettings.FragmentDistance
+                                )
+                                {
+                                    firstAtom.ChangeGroupRequiresHighlight = true;
+                                }
+                            }
+
+                            var lastAtom = group.Atoms.LastOrDefault(a => a.ContentElement.Name == W.t);
+                            if (lastAtom != null)
+                            {
+                                lastAtom.ChangeGroupEnd = true;
+                                lastAtom.ChangeGroupUnid = changeGroupUnid;
+
+                                var nextChangedGroupDistance = getNextChangedAtomsGroupPositionDistance(groups, i);
+                                if (nextChangedGroupDistance != -1 && 
+                                    nextChangedGroupDistance < internalSettings.MergeSettings.WrapTrackingChangesSettings.FragmentDistance
+                                )
+                                {
+                                    lastAtom.ChangeGroupRequiresHighlight = true;
+                                }
+                            }
+                        }
+                    };
+            });
         }
     }
 }
