@@ -65,7 +65,7 @@ namespace OpenXmlPowerTools
                         };
 
                         var revised = revisedDocumentInfo.RevisedDocument;
-                        var delta = WmlComparer.CompareInternal(merged, revised, settings, internalSettings);
+                        var delta = WmlComparer.CompareInternal(merged, revised, internalSettings);
 
                         var colorRgb = revisedDocumentInfo.Color.ToArgb();
                         var colorString = colorRgb.ToString("X");
@@ -197,7 +197,7 @@ namespace OpenXmlPowerTools
                     var position = 0;
 
                     // group texts within each paragraphs by tracking changes
-                    var groups = GroupAdjucentComparisonUnitAtomsByTrackedChange(comparisonUnitAtoms, -1)
+                    var groups = GroupAdjacentComparisonUnitAtomsByTrackedChange(comparisonUnitAtoms, -1)
                         .Select(group => {
                             var spl = group.Key.Split('|');
                             var status = spl[1];

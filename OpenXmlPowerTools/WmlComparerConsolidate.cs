@@ -149,7 +149,7 @@ namespace OpenXmlPowerTools
                     foreach (var revisedDocumentInfo in revisedDocumentInfoList)
                     {
                         internalSettings.StartingIdForFootnotesEndnotes = (deltaNbr * 2000) + 3000;
-                        var delta = WmlComparer.CompareInternal(originalWithUnids, revisedDocumentInfo.RevisedDocument, settings, internalSettings);
+                        var delta = WmlComparer.CompareInternal(originalWithUnids, revisedDocumentInfo.RevisedDocument, internalSettings);
 
                         if (s_SaveIntermediateFilesForDebugging && settings.DebugTempFileDi != null)
                         {
@@ -229,7 +229,6 @@ namespace OpenXmlPowerTools
                                                 consolidatedWDoc,
                                                 elementToInsertAfter,
                                                 ci,
-                                                settings,
                                                 internalSettings
                                             );
                                             break;
@@ -282,7 +281,6 @@ namespace OpenXmlPowerTools
                                                     consolidatedWDoc,
                                                     firstElement,
                                                     ci,
-                                                    settings,
                                                     internalSettings
                                                 );
                                                 break;
@@ -833,7 +831,6 @@ namespace OpenXmlPowerTools
             WordprocessingDocument consolidatedWDoc,
             XElement elementToInsertAfter,
             ConsolidationInfo consolidationInfo,
-            WmlComparerSettings settings,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -843,7 +840,7 @@ namespace OpenXmlPowerTools
             PackagePart partInNewDocument = packageOfNewContent.GetPart(consolidatedWDoc.MainDocumentPart.Uri);
             consolidationInfo.RevisionElement = MoveRelatedPartsToDestination(partInDeletedDocument, partInNewDocument, consolidationInfo.RevisionElement);
 
-            var clonedForHashing = (XElement)CloneBlockLevelContentForHashing(consolidatedWDoc.MainDocumentPart, consolidationInfo.RevisionElement, false, settings, internalSettings);
+            var clonedForHashing = (XElement)CloneBlockLevelContentForHashing(consolidatedWDoc.MainDocumentPart, consolidationInfo.RevisionElement, false, internalSettings);
             clonedForHashing.Descendants().Where(d => d.Name == W.ins || d.Name == W.del).Attributes(W.id).Remove();
             var shaString = clonedForHashing.ToString(SaveOptions.DisableFormatting)
                 .Replace(" xmlns=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"", "");
