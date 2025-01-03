@@ -10,11 +10,11 @@ namespace OpenXmlPowerTools
 {
     public class WmlComparerMergeSettings
     {
-        public bool WrapTrackingChanges = false;
-        public WmlComparerWrapTrackingChangesSettings WrapTrackingChangesSettings = new WmlComparerWrapTrackingChangesSettings();
+        public bool FormatTrackingChanges = false;
+        public WmlComparerFormatTrackingChangesSettings FormatTrackingChangesSettings = new WmlComparerFormatTrackingChangesSettings();
     }
 
-    public class WmlComparerWrapTrackingChangesSettings
+    public class WmlComparerFormatTrackingChangesSettings
     {
         public string FragmentStart = "[";
         public string FragmentEnd = "]";
@@ -136,7 +136,7 @@ namespace OpenXmlPowerTools
                 });
         }
 
-        class ComparisonInitAtomsGroupInfo
+        class ComparisonUnitAtomsGroupInfo
         {
             public IList<ComparisonUnitAtom> Atoms;
             public string Status;
@@ -148,12 +148,12 @@ namespace OpenXmlPowerTools
             }
         }
 
-        private static void MarkInsertedDeletedComparisonUnitAtomsBounds(
+        private static void MarkInsertedDeletedComparisonUnitAtomsBoundsForFormatting(
             List<ComparisonUnitAtom> comparisonUnitAtoms,
             WmlComparerInternalSettings internalSettings   
         ) 
         {
-            int getPrevChangedAtomsGroupPositionDistance(List<ComparisonInitAtomsGroupInfo> atomsGroups, int index)
+            int getPrevChangedAtomsGroupPositionDistance(List<ComparisonUnitAtomsGroupInfo> atomsGroups, int index)
             {
                 var currentAtomGroup = atomsGroups[index];
                 for (var i = index - 1; i >= 0; i--)
@@ -168,7 +168,7 @@ namespace OpenXmlPowerTools
                 
             }
 
-            int getNextChangedAtomsGroupPositionDistance(List<ComparisonInitAtomsGroupInfo> atomsGroups, int index)
+            int getNextChangedAtomsGroupPositionDistance(List<ComparisonUnitAtomsGroupInfo> atomsGroups, int index)
             {
                 var currentAtomGroup = atomsGroups[index];
                 for (var i = index + 1; i < atomsGroups.Count; i++)
@@ -197,63 +197,59 @@ namespace OpenXmlPowerTools
                     var position = 0;
 
                     // group texts within each paragraphs by tracking changes
-                    var groups = GroupAdjacentComparisonUnitAtomsByTrackedChange(comparisonUnitAtoms, -1)
+                    var changedGroups = GroupAdjacentComparisonUnitAtomsByTrackedChange(paraGroup, -1, true)
                         .Select(group => {
-                            var spl = group.Key.Split('|');
-                            var status = spl[1];
-                            var g = new ComparisonInitAtomsGroupInfo() 
+                            var firstGroupAtom = group.FirstOrDefault();
+                            var g = new ComparisonUnitAtomsGroupInfo() 
                             {
                                 Atoms = group.ToList(),
-                                Status = status, 
+                                // for last merged document, its Status should come from the CorrelationStatus field
+                                Status = firstGroupAtom.MergeStatus ?? firstGroupAtom.CorrelationStatus.ToString(), 
                                 Position = position,
                                 Size = group.Count(), 
                             };
                             position += g.Size;
                             return g;
                         })
+                        .Where(g => g.IsChanged)
                         .ToList();
-                    
-                    
-                    for (var i = 0; i < groups.Count; i++) 
+                        
+                    for (var i = 0; i < changedGroups.Count; i++) 
                     {
-                        var group = groups[i];
+                        var changedGroup = changedGroups[i];
+                        var firstAtom = changedGroup.Atoms.FirstOrDefault(a => a.ContentElement.Name == W.t);
+                        var lastAtom = changedGroup.Atoms.LastOrDefault(a => a.ContentElement.Name == W.t);
+                        var changeGroupUnid = Util.GenerateUnid();
 
-                        if (group.IsChanged)
+                        if (firstAtom != null && lastAtom != null)
                         {
-                            var changeGroupUnid = Util.GenerateUnid();
+                            firstAtom.ChangeGroupStart = true;
+                            firstAtom.ChangeGroupUnid = changeGroupUnid;
 
-                            var firstAtom = group.Atoms.FirstOrDefault(a => a.ContentElement.Name == W.t);
-                            if (firstAtom != null)
-                            {
-                                firstAtom.ChangeGroupStart = true;
-                                firstAtom.ChangeGroupUnid = changeGroupUnid;
+                            lastAtom.ChangeGroupEnd = true;
+                            lastAtom.ChangeGroupUnid = changeGroupUnid;
 
-                                var prevChangedGroupDistance = getPrevChangedAtomsGroupPositionDistance(groups, i);
-                                if (prevChangedGroupDistance != -1 && 
-                                    prevChangedGroupDistance < internalSettings.MergeSettings.WrapTrackingChangesSettings.FragmentDistance
+                            var prevChangedGroupDistance = getPrevChangedAtomsGroupPositionDistance(changedGroups, i);
+                            var nextChangedGroupDistance = getNextChangedAtomsGroupPositionDistance(changedGroups, i);
+
+                            //Console.WriteLine(prevChangedGroupDistance);
+                            if ((
+                                    prevChangedGroupDistance != -1 && 
+                                    prevChangedGroupDistance < internalSettings.MergeSettings.FormatTrackingChangesSettings.FragmentDistance
+                                ) ||
+                                (
+                                    nextChangedGroupDistance != -1 && 
+                                    nextChangedGroupDistance < internalSettings.MergeSettings.FormatTrackingChangesSettings.FragmentDistance
                                 )
-                                {
-                                    firstAtom.ChangeGroupRequiresHighlight = true;
-                                }
-                            }
-
-                            var lastAtom = group.Atoms.LastOrDefault(a => a.ContentElement.Name == W.t);
-                            if (lastAtom != null)
+                            )
                             {
-                                lastAtom.ChangeGroupEnd = true;
-                                lastAtom.ChangeGroupUnid = changeGroupUnid;
-
-                                var nextChangedGroupDistance = getNextChangedAtomsGroupPositionDistance(groups, i);
-                                if (nextChangedGroupDistance != -1 && 
-                                    nextChangedGroupDistance < internalSettings.MergeSettings.WrapTrackingChangesSettings.FragmentDistance
-                                )
-                                {
-                                    lastAtom.ChangeGroupRequiresHighlight = true;
-                                }
+                                firstAtom.ChangeGroupRequireFormatting = true;
+                                lastAtom.ChangeGroupRequireFormatting = true;
                             }
                         }
                     };
             });
         }
+
     }
 }

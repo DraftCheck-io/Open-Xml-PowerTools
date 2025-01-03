@@ -937,20 +937,14 @@ namespace OpenXmlPowerTools
                         }
 
                         if (ce.Name == W.del)
-                        {
                             return getGroupKeyForAdjacentRunContainers(ce, "Wdel", W.delText);
-                        }
 
                         if (ce.Name == W.moveFrom)
-                        {
                             return getGroupKeyForAdjacentRunContainers(ce, "WmoveFrom", W.t);
-                        }
 
 
                         if (ce.Name == W.moveTo)
-                        {
                             return getGroupKeyForAdjacentRunContainers(ce, "WmoveTo", W.t);
-                        }
 
                         return dontConsolidate;
                     });
@@ -5969,6 +5963,7 @@ listSeparator
         public static XName MoveToUnid = pt + "MoveToUnid";
         public static XName MergeStatus = pt + "MergeStatus";
         public static XName MergeIterations = pt + "MergeIterations";
+        public static XName FormatChanges = pt + "FormatChanges";
     }
 
     public static class Xhtml
