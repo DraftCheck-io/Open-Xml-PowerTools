@@ -851,7 +851,7 @@ namespace OpenXmlPowerTools
                 DocxComparerUtil.NotePad(sbs);
             }
 
-            if (internalSettings.ResolveTrackingChanges && internalSettings.MergeSettings.FormatTrackingChanges)
+            if (internalSettings.ResolveTrackingChanges && internalSettings.MergeSettings?.FormatTrackingChanges == true)
             {
                 MarkInsertedDeletedComparisonUnitAtomsBoundsForFormatting(listOfComparisonUnitAtoms, internalSettings);
             }
@@ -4359,7 +4359,7 @@ namespace OpenXmlPowerTools
 
                         XAttribute formatTrackingChangesAttribute = null;
 
-                        if (internalSettings.MergeSettings.FormatTrackingChanges)
+                        if (internalSettings.MergeSettings?.FormatTrackingChanges == true)
                         {
                             var requiresCommentHighlight = groupedChildren
                                 .Any(gc => 
