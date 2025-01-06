@@ -344,7 +344,7 @@ namespace OpenXmlPowerTools
                             if (sourceUnidDict.ContainsKey(thisUnid))
                             {
                                 var correlatedBlockLevelContent = sourceUnidDict[thisUnid];
-                                correlatedBlockLevelContent.Add(new XAttribute(PtOpenXml.CorrelatedSHA1Hash, sha1Hash));
+                                correlatedBlockLevelContent.SetAttributeValue(PtOpenXml.CorrelatedSHA1Hash, sha1Hash);
                             }
                         }
                     }
@@ -3230,7 +3230,7 @@ namespace OpenXmlPowerTools
                 var shaString = cloneBlockLevelContentForHashing.ToString(SaveOptions.DisableFormatting)
                     .Replace(" xmlns=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"", "");
                 var sha1Hash = PtUtils.SHA1HashStringForUTF8String(shaString);
-                blockLevelContent.Add(new XAttribute(PtOpenXml.SHA1Hash, sha1Hash));
+                blockLevelContent.SetAttributeValue(PtOpenXml.SHA1Hash, sha1Hash);
 
                 if (blockLevelContent.Name == W.tbl ||
                     blockLevelContent.Name == W.tr)
@@ -3245,7 +3245,7 @@ namespace OpenXmlPowerTools
                     var shaString2 = clonedForStructureHash.ToString(SaveOptions.DisableFormatting)
                         .Replace(" xmlns=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"", "");
                     var sha1Hash2 = PtUtils.SHA1HashStringForUTF8String(shaString2);
-                    blockLevelContent.Add(new XAttribute(PtOpenXml.StructureSHA1Hash, sha1Hash2));
+                    blockLevelContent.SetAttributeValue(PtOpenXml.StructureSHA1Hash, sha1Hash2);
                 }
             }
         }

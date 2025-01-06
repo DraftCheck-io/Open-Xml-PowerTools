@@ -2797,7 +2797,7 @@ namespace OpenXmlPowerTools
             {
                 using (WordprocessingDocument wdoc = streamDoc.GetWordprocessingDocument())
                 {
-                    return RevisionAccepter.HasTrackedRevisions(wdoc);
+                    return HasTrackedRevisions(wdoc);
                 }
             }
         }
@@ -2826,11 +2826,11 @@ namespace OpenXmlPowerTools
     {
         public WmlDocument AcceptRevisions(WmlDocument document)
         {
-            return RevisionAccepter.AcceptRevisions(document);
+            return RevisionProcessor.AcceptRevisions(document);
         }
         public bool HasTrackedRevisions(WmlDocument document)
         {
-            return RevisionAccepter.HasTrackedRevisions(document);
+            return RevisionProcessor.HasTrackedRevisions(document);
         }
     }
 
