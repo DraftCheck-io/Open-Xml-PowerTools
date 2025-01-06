@@ -139,12 +139,12 @@ namespace OpenXmlPowerTools
         class ComparisonUnitAtomsGroupInfo
         {
             public IList<ComparisonUnitAtom> Atoms;
-            public string Status;
+            public CorrelationStatus Status;
             public int Position;
             public int Size;
         
             public bool IsChanged { 
-                get => Status == "Deleted" || Status == "Inserted"; 
+                get => Status == CorrelationStatus.Deleted || Status == CorrelationStatus.Inserted; 
             }
         }
 
@@ -204,7 +204,8 @@ namespace OpenXmlPowerTools
                             {
                                 Atoms = group.ToList(),
                                 // for last merged document, its Status should come from the CorrelationStatus field
-                                Status = firstGroupAtom.MergeStatus ?? firstGroupAtom.CorrelationStatus.ToString(), 
+                                Status = (firstGroupAtom.MergeStatus != CorrelationStatus.Nil) 
+                                    ? firstGroupAtom.MergeStatus : firstGroupAtom.CorrelationStatus, 
                                 Position = position,
                                 Size = group.Count(), 
                             };

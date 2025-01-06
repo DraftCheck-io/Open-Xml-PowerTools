@@ -92,8 +92,8 @@ namespace OpenXmlPowerTools
             MergeSettings = mergeSettings;
         }
     }
-    
-    public class PreProcessMarkupSettings 
+
+    public class PreProcessMarkupSettings
     {
         public int StartingIdForFootnotesEndnotes = 1;
         public bool TrackRunsSourceIndexes = false;
@@ -131,8 +131,8 @@ namespace OpenXmlPowerTools
         }
 
         private static WmlDocument CompareInternal(
-            WmlDocument source1, 
-            WmlDocument source2, 
+            WmlDocument source1,
+            WmlDocument source2,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -304,8 +304,8 @@ namespace OpenXmlPowerTools
         }
 
         private static WmlDocument HashBlockLevelContent(
-            WmlDocument source, 
-            WmlDocument source1afterProcessingRevTracking, 
+            WmlDocument source,
+            WmlDocument source1afterProcessingRevTracking,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -717,9 +717,9 @@ namespace OpenXmlPowerTools
         }
 
         private static WmlDocument ProduceDocumentWithTrackedRevisions(
-            WmlDocument wmlResult, 
-            WordprocessingDocument wDoc1, 
-            WordprocessingDocument wDoc2, 
+            WmlDocument wmlResult,
+            WordprocessingDocument wDoc1,
+            WordprocessingDocument wDoc2,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -738,7 +738,7 @@ namespace OpenXmlPowerTools
             var contentParent2 = wDoc2.MainDocumentPart.GetXDocument().Root.Element(W.body);
             AddSha1HashToBlockLevelContent(wDoc2.MainDocumentPart, contentParent2, internalSettings);
 
-            var cal1 = WmlComparer.CreateComparisonUnitAtomList(wDoc1.MainDocumentPart, wDoc1.MainDocumentPart.GetXDocument().Root.Element(W.body), internalSettings);
+            var cal1 = CreateComparisonUnitAtomList(wDoc1.MainDocumentPart, wDoc1.MainDocumentPart.GetXDocument().Root.Element(W.body), internalSettings);
 
             if (s_False)
             {
@@ -757,7 +757,7 @@ namespace OpenXmlPowerTools
                 DocxComparerUtil.NotePad(sbs);
             }
 
-            var cal2 = WmlComparer.CreateComparisonUnitAtomList(wDoc2.MainDocumentPart, wDoc2.MainDocumentPart.GetXDocument().Root.Element(W.body), internalSettings);
+            var cal2 = CreateComparisonUnitAtomList(wDoc2.MainDocumentPart, wDoc2.MainDocumentPart.GetXDocument().Root.Element(W.body), internalSettings);
 
             if (s_False)
             {
@@ -873,7 +873,7 @@ namespace OpenXmlPowerTools
                     // The following produces a new valid WordprocessingML document from the listOfComparisonUnitAtoms
                     var newBodyChildren = ProduceNewWmlMarkupFromCorrelatedSequence(
                         wDocWithRevisions.MainDocumentPart,
-                        listOfComparisonUnitAtoms, 
+                        listOfComparisonUnitAtoms,
                         internalSettings
                     );
 
@@ -882,11 +882,11 @@ namespace OpenXmlPowerTools
                         new XElement(W.document,
                             rootNamespaceAttributes,
                             new XElement(W.body, newBodyChildren)));
-                    
-                    if (internalSettings.MergeMode) 
+
+                    if (internalSettings.MergeMode)
                         StoreChangeTrackingStatusForMerge(newXDoc, internalSettings.MergeIteration);
 
-                    if (internalSettings.ResolveTrackingChanges) 
+                    if (internalSettings.ResolveTrackingChanges)
                     {
                         if (internalSettings.MergeMode)
                             RestoreChangeTrackingStatusForMerge(newXDoc);
@@ -895,10 +895,10 @@ namespace OpenXmlPowerTools
 
                         // if (internalSettings.MergeSettings.FormatTrackingChanges)
                         //     AnnotateInsertedDeletedContentWithComments()
-                        
+
                         CoalesceAdjacentRunsWithIdenticalFormatting(newXDoc);
-                    } 
-                    
+                    }
+
                     IgnorePt14Namespace(newXDoc.Root);
 
                     ProcessFootnoteEndnote(
@@ -1441,7 +1441,7 @@ namespace OpenXmlPowerTools
                     .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(i => int.Parse(i))
                     .Select(i => {
-                        if (i >= 0 && i <= internalSettings.MergeRevisors.Count()) 
+                        if (i >= 0 && i <= internalSettings.MergeRevisors.Count())
                         {
                             var revisor = internalSettings.MergeRevisors.ElementAt(i);
                             if (!string.IsNullOrEmpty(revisor))
@@ -1462,7 +1462,7 @@ namespace OpenXmlPowerTools
                     var statusList = getRunDescendantsAttributeValues(element, PtOpenXml.Status);
                     if (statusList.Count() > 1)
                         throw new OpenXmlPowerToolsException("Internal error - have both deleted and inserted text elements in the same run.");
-                    
+
                     if (statusList.Count() == 0)
                         return new XElement(W.r,
                             element.Attributes(),
@@ -1473,18 +1473,18 @@ namespace OpenXmlPowerTools
                     if (moveFromUnidsList.Count() > 1)
                         throw new OpenXmlPowerToolsException("Internal error - have more than one different move from ranges in the same run.");
                     var moveFromUnid = moveFromUnidsList.FirstOrDefault();
-                    
+
                     var moveToUnidsList = getRunDescendantsAttributeValues(element, PtOpenXml.MoveToUnid);
                     if (moveToUnidsList.Count() > 1)
-                        throw new OpenXmlPowerToolsException("Internal error - have more than one different move to ranges in the same run.");     
+                        throw new OpenXmlPowerToolsException("Internal error - have more than one different move to ranges in the same run.");
                     var moveToUnid = moveToUnidsList.FirstOrDefault();
-                    
+
                     if (moveFromUnid != null && moveToUnid != null)
                         throw new OpenXmlPowerToolsException("Internal error - have both move from and move to ranges in the same run.");
 
                     var mergeIterationsList = getRunDescendantsAttributeValues(element, PtOpenXml.MergeIterations);
                     if (mergeIterationsList.Count() > 1)
-                        throw new OpenXmlPowerToolsException("Internal error - have more than one different merge iterations in the same run.");     
+                        throw new OpenXmlPowerToolsException("Internal error - have more than one different merge iterations in the same run.");
                     var mergeIterations = mergeIterationsList.FirstOrDefault();
 
                     var author = getRevisionAuthor(mergeIterations);
@@ -1804,7 +1804,7 @@ namespace OpenXmlPowerTools
                         // in the case where a row is inserted, not necessary to hack - the inserted row ID will do as well.
                         AssembleAncestorUnidsInOrderToRebuildXmlTreeProperly(fnListOfComparisonUnitAtoms);
 
-                        var newFootnoteEndnoteChildren = ProduceNewWmlMarkupFromCorrelatedSequence(partToUseAfter, 
+                        var newFootnoteEndnoteChildren = ProduceNewWmlMarkupFromCorrelatedSequence(partToUseAfter,
                             fnListOfComparisonUnitAtoms, internalSettings);
                         var tempElement = new XElement(W.body, newFootnoteEndnoteChildren);
                         var hasFootnoteReference = tempElement.Descendants(W.r).Any(r =>
@@ -2458,7 +2458,7 @@ namespace OpenXmlPowerTools
 
         // the following gets a flattened list of ComparisonUnitAtoms, with status indicated in each ComparisonUnitAtom: Deleted, Inserted, or Equal
         private static List<ComparisonUnitAtom> FlattenToComparisonUnitAtomList(
-            List<CorrelatedSequence> correlatedSequence, 
+            List<CorrelatedSequence> correlatedSequence,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -2503,6 +2503,7 @@ namespace OpenXmlPowerTools
                                         ComparisonUnitAtomBefore = before,
                                         MoveFromUnid = after.MoveFromUnid,
                                         MoveToUnid = after.MoveToUnid,
+                                        MoveStatus = after.MoveStatus,
                                         MergeStatus = before.MergeStatus,
                                         MergeIterations = before.MergeIterations,
                                     };
@@ -2520,10 +2521,10 @@ namespace OpenXmlPowerTools
                                 var correlationStatus = CorrelationStatus.Deleted;
 
                                 // in merge mode, the status of the deleted content should be restored from MergeStatus attribute (if exists)
-                                if (internalSettings.MergeMode && ca.MergeStatus != null)
+                                if (internalSettings.MergeMode && ca.MergeStatus != CorrelationStatus.Nil)
                                 {
                                     // if the merge status is "Inserted", the content should be treated as inserted
-                                    if (ca.MergeStatus == "Inserted")
+                                    if (ca.MergeStatus == CorrelationStatus.Inserted)
                                         correlationStatus = CorrelationStatus.Inserted;
                                 }
 
@@ -2532,6 +2533,7 @@ namespace OpenXmlPowerTools
                                     CorrelationStatus = correlationStatus,
                                     MoveFromUnid = ca.MoveFromUnid,
                                     MoveToUnid = ca.MoveToUnid,
+                                    MoveStatus = ca.MoveStatus,
                                     MergeStatus = ca.MergeStatus,
                                     MergeIterations = ca.MergeIterations,
                                 };
@@ -2551,6 +2553,7 @@ namespace OpenXmlPowerTools
                                     CorrelationStatus = CorrelationStatus.Inserted,
                                     MoveFromUnid = ca.MoveFromUnid,
                                     MoveToUnid = ca.MoveToUnid,
+                                    MoveStatus = ca.MoveStatus,
                                 });
                         return comparisonUnitAtomList;
                     }
@@ -2730,16 +2733,24 @@ namespace OpenXmlPowerTools
                 }
             }
 
-            void assignMoveFromUnidsToComparisonUnitAtoms(IEnumerable<ComparisonUnit> comparisonUnits, string moveUid) {
+            void assignMoveFromUnidsToComparisonUnitAtoms(IEnumerable<ComparisonUnit> comparisonUnits, string moveUid, CorrelationStatus moveStatus = CorrelationStatus.Nil) {
                 foreach (var cu in comparisonUnits)
                     foreach (var ca in cu.DescendantContentAtoms())
+                    {
                         ca.MoveFromUnid = moveUid;
+                        if (moveStatus != CorrelationStatus.Nil)
+                            ca.MoveStatus = moveStatus;
+                    }
             }
 
-            void assignMoveToUnidsToComparisonUnitAtoms(IEnumerable<ComparisonUnit> comparisonUnits, string moveUid) {
+            void assignMoveToUnidsToComparisonUnitAtoms(IEnumerable<ComparisonUnit> comparisonUnits, string moveUid, CorrelationStatus moveStatus = CorrelationStatus.Nil) {
                 foreach (var cu in comparisonUnits)
                     foreach (var ca in cu.DescendantContentAtoms())
+                    {
                         ca.MoveToUnid = moveUid;
+                        if (moveStatus != CorrelationStatus.Nil)
+                            ca.MoveStatus = moveStatus;
+                    }
             }
 
             IEnumerable<string> collectComparisonUnitAtomsUnids(IEnumerable<ComparisonUnit> comparisonUnits)
@@ -2880,7 +2891,7 @@ namespace OpenXmlPowerTools
                 // strip non-equal sequences at the beginning and at the end
                 var firstNonEqualIndex = 0;
                 var lastNonEqualIndex = movedSequences.Count - 1;
-                
+
                 while (firstNonEqualIndex < lastNonEqualIndex && movedSequences[firstNonEqualIndex].CorrelationStatus != CorrelationStatus.Equal)
                     firstNonEqualIndex++;
                 while (lastNonEqualIndex > firstNonEqualIndex && movedSequences[lastNonEqualIndex].CorrelationStatus != CorrelationStatus.Equal)
@@ -2903,9 +2914,10 @@ namespace OpenXmlPowerTools
                     }
                     else if (cs.CorrelationStatus == CorrelationStatus.Deleted)
                     {
+                        // assignMoveFromUnidsToComparisonUnitAtoms(cs.ComparisonUnitArray1, moveUnid);
                         if (!movedSequencesListWithDeletedSequences.Contains(movedSequences))
                             movedSequencesListWithDeletedSequences.Add(movedSequences);
-                    } 
+                    }
 
                     // consider all atoms in the moved sequences as moved (including inserted and deleted atoms inside the moved sequences)
                     if (cs.ComparisonUnitArray1 != null)
@@ -2952,7 +2964,7 @@ namespace OpenXmlPowerTools
             restoreComparisonUnitAtomsUnids(deletedComparisonUnitAtoms);
 
             // Deleted parts inside the moved sequences should be handled in a very special way.
-            // Rather than marked as deleted in the source run, they should be moved to the target run 
+            // Rather than marked as deleted in the source run, they should be moved to the target run
             // and then marked as deleted in the target run.
 
             foreach (var movedSequences in movedSequencesListWithDeletedSequences)
@@ -2961,7 +2973,7 @@ namespace OpenXmlPowerTools
                 {
                     if (cs.CorrelationStatus == CorrelationStatus.Deleted)
                     {
-                        // 
+                        //
                     }
                 }
             }
@@ -3082,7 +3094,7 @@ namespace OpenXmlPowerTools
         private static IEnumerable<WmlComparerRevision> GetFootnoteEndnoteRevisionList(
             OpenXmlPart footnotesEndnotesPart,
             XName footnoteEndnoteElementName,
-            WmlComparerInternalSettings internalSettings    
+            WmlComparerInternalSettings internalSettings
         )
         {
             if (footnotesEndnotesPart == null)
@@ -3203,8 +3215,8 @@ namespace OpenXmlPowerTools
         }
 
         private static void AddSha1HashToBlockLevelContent(
-            OpenXmlPart part, 
-            XElement contentParent, 
+            OpenXmlPart part,
+            XElement contentParent,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -3261,9 +3273,9 @@ namespace OpenXmlPowerTools
         };
 
         private static XElement CloneBlockLevelContentForHashing(
-            OpenXmlPart mainDocumentPart, 
-            XNode node, 
-            bool includeRelatedParts, 
+            OpenXmlPart mainDocumentPart,
+            XNode node,
+            bool includeRelatedParts,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -3273,9 +3285,9 @@ namespace OpenXmlPowerTools
         }
 
         private static object CloneBlockLevelContentForHashingInternal(
-            OpenXmlPart mainDocumentPart, 
-            XNode node, 
-            bool includeRelatedParts, 
+            OpenXmlPart mainDocumentPart,
+            XNode node,
+            bool includeRelatedParts,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -3506,7 +3518,7 @@ namespace OpenXmlPowerTools
                     var mergedAncestorsCount = xt
                         .Ancestors()
                         // "Deleted" content should be a part of the comparison; we want to detect if it was deleted by multiple reviewers
-                        .Where(e => (string) e.Attribute(PtOpenXml.MergeStatus) == "Inserted") 
+                        .Where(e => (string) e.Attribute(PtOpenXml.MergeStatus) == "Inserted")
                         .Count();
                     // make sure the content is unique to avoid SHA1 hash matching
                     if (mergedAncestorsCount > 0)
@@ -4180,7 +4192,7 @@ namespace OpenXmlPowerTools
         }
 
         private static IList<IGrouping<string, ComparisonUnitAtom>> GroupAdjacentComparisonUnitAtomsByTrackedChange(
-            IEnumerable<ComparisonUnitAtom> comparisonUnitAtomList, 
+            IEnumerable<ComparisonUnitAtom> comparisonUnitAtomList,
             int level,
             bool ignoreAncestors = false
         )
@@ -4223,14 +4235,14 @@ namespace OpenXmlPowerTools
         }
 
         private static object CoalesceRecurse(
-            OpenXmlPart part, 
-            IEnumerable<ComparisonUnitAtom> list, 
-            int level, 
+            OpenXmlPart part,
+            IEnumerable<ComparisonUnitAtom> list,
+            int level,
             WmlComparerInternalSettings internalSettings
         )
         {
             var settings = internalSettings.ComparerSettings;
-            
+
             var grouped = list.GroupBy(ca =>
             {
                 if (level >= ca.AncestorElements.Length)
@@ -4331,7 +4343,7 @@ namespace OpenXmlPowerTools
                         var newRunAttributes = ancestorBeingConstructed.Attributes().Where(a => a.Name.Namespace != PtOpenXml.pt);
                         if (settings.TrackRunsSourceIndexes && ancestorBeingConstructed.Attribute(PtOpenXml.Index) != null)
                         {
-                            if (Status == CorrelationStatus.Equal) 
+                            if (Status == CorrelationStatus.Equal)
                             {
                                 // get the list if the all unique Index attributes of the allAncestorBeingConstructedBefore
                                 var allAncestorBeingConstructedBeforeIndexes = allAncestorBeingConstructedBefore
@@ -4342,14 +4354,14 @@ namespace OpenXmlPowerTools
                                     new XAttribute(PtOpenXml.SourceIndex1, string.Join(WordprocessingMLUtil.AttributeValueSeparator, allAncestorBeingConstructedBeforeIndexes)),
                                     new XAttribute(PtOpenXml.SourceIndex2, ancestorBeingConstructed.Attribute(PtOpenXml.Index).Value)
                                 });
-                            } 
-                            else if (Status == CorrelationStatus.Inserted) 
+                            }
+                            else if (Status == CorrelationStatus.Inserted)
                             {
                                 newRunAttributes = newRunAttributes.Concat(new [] {
                                     new XAttribute(PtOpenXml.SourceIndex2, ancestorBeingConstructed.Attribute(PtOpenXml.Index).Value)
                                 });
-                            } 
-                            else if (Status == CorrelationStatus.Deleted) 
+                            }
+                            else if (Status == CorrelationStatus.Deleted)
                             {
                                 newRunAttributes = newRunAttributes.Concat(new [] {
                                     new XAttribute(PtOpenXml.SourceIndex1, ancestorBeingConstructed.Attribute(PtOpenXml.Index).Value)
@@ -4362,7 +4374,7 @@ namespace OpenXmlPowerTools
                         if (internalSettings.MergeSettings?.FormatTrackingChanges == true)
                         {
                             var requiresCommentHighlight = groupedChildren
-                                .Any(gc => 
+                                .Any(gc =>
                                     gc.Any(ca => ca.ChangeGroupRequireFormatting)
                                 );
 
@@ -4389,7 +4401,7 @@ namespace OpenXmlPowerTools
                                 var textOfTextElement = gc.Select(gce => {
                                     var sb = new StringBuilder(gce.ContentElement.Value ?? "");
                                     if (gce.ChangeGroupStart && gce.ChangeGroupRequireFormatting)
-                                        sb.Insert(0, internalSettings.MergeSettings.FormatTrackingChangesSettings.FragmentStart); 
+                                        sb.Insert(0, internalSettings.MergeSettings.FormatTrackingChangesSettings.FragmentStart);
                                     if (gce.ChangeGroupEnd && gce.ChangeGroupRequireFormatting)
                                         sb.Append(internalSettings.MergeSettings.FormatTrackingChangesSettings.FragmentEnd);
                                     return sb.ToString();
@@ -4397,10 +4409,10 @@ namespace OpenXmlPowerTools
 
                                 var del = gc.First().CorrelationStatus == CorrelationStatus.Deleted;
                                 var ins = gc.First().CorrelationStatus == CorrelationStatus.Inserted;
-                                var MoveFromUnid = gc.First().MoveFromUnid;
-                                var MoveToUnid = gc.First().MoveToUnid;
-                                var MergeStatus = gc.First().ComparisonUnitAtomBefore?.MergeStatus ?? gc.First().MergeStatus;
-                                var MergeIterations = gc.First().ComparisonUnitAtomBefore?.MergeIterations ?? gc.First().MergeIterations;
+                                var moveFromUnid = gc.First().MoveFromUnid;
+                                var moveToUnid = gc.First().MoveToUnid;
+                                var mergeStatus = gc.First().ComparisonUnitAtomBefore?.MergeStatus ?? gc.First().MergeStatus;
+                                var mergeIterations = gc.First().ComparisonUnitAtomBefore?.MergeIterations ?? gc.First().MergeIterations;
                                 XElement el;
 
                                 if (del)
@@ -4418,14 +4430,14 @@ namespace OpenXmlPowerTools
                                         GetXmlSpaceAttribute(textOfTextElement),
                                         textOfTextElement);
 
-                                if (MoveFromUnid != null)
-                                    el.Add(new XAttribute(PtOpenXml.MoveFromUnid, MoveFromUnid));
-                                if (MoveToUnid != null)
-                                    el.Add(new XAttribute(PtOpenXml.MoveToUnid, MoveToUnid));
-                                if (MergeStatus != null)
-                                    el.Add(new XAttribute(PtOpenXml.MergeStatus, MergeStatus));
-                                if (MergeIterations != null)
-                                    el.Add(new XAttribute(PtOpenXml.MergeIterations, MergeIterations));
+                                if (moveFromUnid != null)
+                                    el.Add(new XAttribute(PtOpenXml.MoveFromUnid, moveFromUnid));
+                                if (moveToUnid != null)
+                                    el.Add(new XAttribute(PtOpenXml.MoveToUnid, moveToUnid));
+                                if (mergeStatus != CorrelationStatus.Nil)
+                                    el.Add(new XAttribute(PtOpenXml.MergeStatus, mergeStatus));
+                                if (mergeIterations != null)
+                                    el.Add(new XAttribute(PtOpenXml.MergeIterations, mergeIterations));
                                 return (object)el;
                             })
                             .ToList();
@@ -4680,13 +4692,13 @@ namespace OpenXmlPowerTools
         }
 
         private static XElement ReconstructElement(
-            OpenXmlPart part, 
-            IGrouping<string, ComparisonUnitAtom> g, 
-            XElement ancestorBeingConstructed, 
+            OpenXmlPart part,
+            IGrouping<string, ComparisonUnitAtom> g,
+            XElement ancestorBeingConstructed,
             XName props1XName,
-            XName props2XName, 
-            XName props3XName, 
-            int level, 
+            XName props2XName,
+            XName props3XName,
+            int level,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -6302,6 +6314,19 @@ namespace OpenXmlPowerTools
                             key = nextIndex;
                             nextIndex++;
                         }
+                        else if (internalSettings.MergeMode && sr.MergeStatus == CorrelationStatus.Inserted)
+                        {
+                            // DraftCheck: text fragments, inserted in the Merge mode, should be treated as a separate words
+                            if (prevAtgbw.ComparisonUnitAtomMember?.MergeStatus != CorrelationStatus.Inserted)
+                            {
+                                nextIndex++;
+                                key = nextIndex;
+                            }
+                            else
+                            {
+                                key = nextIndex;
+                            }
+                        }
                         else
                         {
                             key = nextIndex;
@@ -6626,8 +6651,8 @@ namespace OpenXmlPowerTools
         };
 
         internal static ComparisonUnitAtom[] CreateComparisonUnitAtomList(
-            OpenXmlPart part, 
-            XElement contentParent, 
+            OpenXmlPart part,
+            XElement contentParent,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -6807,8 +6832,8 @@ namespace OpenXmlPowerTools
         }
 
         private static List<ComparisonUnitAtom> CreateComparisonUnitAtomListInternal(
-            OpenXmlPart part, 
-            XElement contentParent, 
+            OpenXmlPart part,
+            XElement contentParent,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -6826,9 +6851,9 @@ namespace OpenXmlPowerTools
         };
 
         private static void CreateComparisonUnitAtomListRecurse(
-            OpenXmlPart part, 
-            XElement element, 
-            List<ComparisonUnitAtom> comparisonUnitAtomList, 
+            OpenXmlPart part,
+            XElement element,
+            List<ComparisonUnitAtom> comparisonUnitAtomList,
             WmlComparerInternalSettings internalSettings
         )
         {
@@ -6920,9 +6945,9 @@ namespace OpenXmlPowerTools
         }
 
         private static void AnnotateElementWithProps(
-            OpenXmlPart part, XElement element, 
-            List<ComparisonUnitAtom> comparisonUnitAtomList, 
-            XName[] childElementPropertyNames, 
+            OpenXmlPart part, XElement element,
+            List<ComparisonUnitAtom> comparisonUnitAtomList,
+            XName[] childElementPropertyNames,
             WmlComparerInternalSettings internalSettings
             )
         {
@@ -7125,38 +7150,39 @@ namespace OpenXmlPowerTools
         public ComparisonUnitAtom ComparisonUnitAtomBefore;
         public OpenXmlPart Part;
         public XElement RevTrackElement;
-        
+
         // DraftCheck
         public string MoveFromUnid;
         public string MoveToUnid;
-        public string MergeStatus;
+        public CorrelationStatus MoveStatus;
+        public CorrelationStatus MergeStatus;
         public string MergeIterations;
         public bool ChangeGroupStart = false;
         public bool ChangeGroupEnd = false;
         public string ChangeGroupUnid;
         public bool ChangeGroupRequireFormatting = false;
 
-
-        private readonly XElement MergeStatusElement;
-
         public ComparisonUnitAtom(
-            XElement contentElement, 
-            XElement[] ancestorElements, 
-            OpenXmlPart part, 
+            XElement contentElement,
+            XElement[] ancestorElements,
+            OpenXmlPart part,
             WmlComparerInternalSettings internalSettings
-        )   
+        )
         {
             ContentElement = contentElement;
             AncestorElements = ancestorElements;
             Part = part;
             RevTrackElement = GetRevisionTrackingElementFromAncestors(contentElement, AncestorElements);
-            
+
+            XElement mergeStatusElement = null;
+
             if (internalSettings.MergeMode)
-                MergeStatusElement = GetMergeStatusElementFromAncestors(AncestorElements);
-            if (MergeStatusElement != null)
+                mergeStatusElement = GetMergeStatusElementFromAncestors(AncestorElements);
+
+            if (mergeStatusElement != null)
             {
-                MergeStatus = (string) MergeStatusElement.Attribute(PtOpenXml.MergeStatus);
-                MergeIterations = (string) MergeStatusElement.Attribute(PtOpenXml.MergeIterations);
+                MergeStatus = (CorrelationStatus) Enum.Parse(typeof(CorrelationStatus), (string) mergeStatusElement.Attribute(PtOpenXml.MergeStatus));
+                MergeIterations = (string) mergeStatusElement.Attribute(PtOpenXml.MergeIterations);
             }
 
             if (RevTrackElement == null)
@@ -7178,14 +7204,14 @@ namespace OpenXmlPowerTools
             }
             else
             {
-                var shaHashString = GetSha1HashStringForElement(ContentElement, MergeStatusElement, internalSettings);
+                var shaHashString = GetSha1HashStringForElement(ContentElement, MergeStatus, internalSettings);
                 SHA1Hash = PtUtils.SHA1HashStringForUTF8String(shaHashString);
             }
         }
 
         private string GetSha1HashStringForElement(
-            XElement contentElement, 
-            XElement mergeStatusElement,
+            XElement contentElement,
+            CorrelationStatus mergeStatus,
             WmlComparerInternalSettings internalSettings
             )
         {
@@ -7194,8 +7220,8 @@ namespace OpenXmlPowerTools
             if (internalSettings.MergeMode)
             {
                 // make sure the content is unique to avoid SHA1 hash matching
-                // "Deleted" content should be a part of the compariosn; we want to detect if it was removed by multiple reviewers
-                if (mergeStatusElement != null && (string) mergeStatusElement.Attribute(PtOpenXml.MergeStatus) == "Inserted")
+                // "Deleted" content should be a part of the comparison; we want to detect if it was removed by multiple reviewers
+                if (mergeStatus == CorrelationStatus.Inserted)
                     text = Util.GenerateUnid();
             }
             if (settings.CaseInsensitive)
@@ -7513,7 +7539,7 @@ namespace OpenXmlPowerTools
                 throw new PlatformNotSupportedException("Unsupported OS platform");
             }
 
-            
+
         }
     }
 
