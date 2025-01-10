@@ -2498,12 +2498,13 @@ namespace OpenXmlPowerTools
                                 {
                                     return new ComparisonUnitAtom(after.ContentElement, after.AncestorElements, after.Part, internalSettings)
                                     {
-                                        CorrelationStatus = CorrelationStatus.Normal,
+                                        CorrelationStatus = CorrelationStatus.Equal,
                                         ContentElementBefore = before.ContentElement,
                                         ComparisonUnitAtomBefore = before,
                                         MoveFromUnid = after.MoveFromUnid,
                                         MoveToUnid = after.MoveToUnid,
                                         MoveStatus = after.MoveStatus,
+                                        MoveMatchIndex = after.MoveMatchIndex,
                                         MergeStatus = before.MergeStatus,
                                         MergeIterations = before.MergeIterations,
                                     };
@@ -2534,6 +2535,7 @@ namespace OpenXmlPowerTools
                                     MoveFromUnid = ca.MoveFromUnid,
                                     MoveToUnid = ca.MoveToUnid,
                                     MoveStatus = ca.MoveStatus,
+                                    MoveMatchIndex = ca.MoveMatchIndex,
                                     MergeStatus = ca.MergeStatus,
                                     MergeIterations = ca.MergeIterations,
                                 };
@@ -2554,6 +2556,7 @@ namespace OpenXmlPowerTools
                                     MoveFromUnid = ca.MoveFromUnid,
                                     MoveToUnid = ca.MoveToUnid,
                                     MoveStatus = ca.MoveStatus,
+                                    MoveMatchIndex = ca.MoveMatchIndex,
                                 });
                         return comparisonUnitAtomList;
                     }
@@ -2681,8 +2684,10 @@ namespace OpenXmlPowerTools
         // DraftCheck
         private static void DetectMovedContentInCorrelatedSequence(IEnumerable<CorrelatedSequence> correlatedSequence, WmlComparerInternalSettings internalSettings)
         {
-            void backupComparisonUnitAtomsUnids(IEnumerable<ComparisonUnitAtom> comparisonUnitAtoms) {
-                void doBackupAttribute(XElement element, XName attributeName) {
+            void backupComparisonUnitAtomsUnids(IEnumerable<ComparisonUnitAtom> comparisonUnitAtoms) 
+            {
+                void doBackupAttribute(XElement element, XName attributeName) 
+                {
                     XName backupAttributeName = attributeName + "Backup";
                     var attr = element.Attribute(attributeName);
                     var backupAttr = element.Attribute(backupAttributeName);
@@ -2708,8 +2713,10 @@ namespace OpenXmlPowerTools
                 }
             }
 
-            void restoreComparisonUnitAtomsUnids(IEnumerable<ComparisonUnitAtom> comparisonUnitAtoms) {
-                void doRestoreAttribute(XElement element, XName attributeName) {
+            void restoreComparisonUnitAtomsUnids(IEnumerable<ComparisonUnitAtom> comparisonUnitAtoms) 
+            {
+                void doRestoreAttribute(XElement element, XName attributeName) 
+                {
                     XName backupAttributeName = attributeName + "Backup";
                     var attr = element.Attribute(attributeName);
                     var backupAttr = element.Attribute(backupAttributeName);
@@ -2733,23 +2740,35 @@ namespace OpenXmlPowerTools
                 }
             }
 
-            void assignMoveFromUnidsToComparisonUnitAtoms(IEnumerable<ComparisonUnit> comparisonUnits, string moveUid, CorrelationStatus moveStatus = CorrelationStatus.Nil) {
+            void assignMoveFromUnidToComparisonUnitAtoms(
+                IEnumerable<ComparisonUnit> comparisonUnits, 
+                string moveUid, 
+                CorrelationStatus moveStatus,
+                int moveMatchIndex
+            ) 
+            {
                 foreach (var cu in comparisonUnits)
                     foreach (var ca in cu.DescendantContentAtoms())
                     {
                         ca.MoveFromUnid = moveUid;
-                        if (moveStatus != CorrelationStatus.Nil)
-                            ca.MoveStatus = moveStatus;
+                        ca.MoveStatus = moveStatus;
+                        ca.MoveMatchIndex = moveMatchIndex;
                     }
             }
 
-            void assignMoveToUnidsToComparisonUnitAtoms(IEnumerable<ComparisonUnit> comparisonUnits, string moveUid, CorrelationStatus moveStatus = CorrelationStatus.Nil) {
+            void assignMoveToUnidToComparisonUnitAtoms(
+                IEnumerable<ComparisonUnit> comparisonUnits, 
+                string moveUid,
+                CorrelationStatus moveStatus,
+                int moveMatchIndex
+            ) 
+            {
                 foreach (var cu in comparisonUnits)
                     foreach (var ca in cu.DescendantContentAtoms())
                     {
                         ca.MoveToUnid = moveUid;
-                        if (moveStatus != CorrelationStatus.Nil)
-                            ca.MoveStatus = moveStatus;
+                        ca.MoveStatus = moveStatus;
+                        ca.MoveMatchIndex = moveMatchIndex;
                     }
             }
 
@@ -2868,8 +2887,6 @@ namespace OpenXmlPowerTools
                     })
                 );
 
-            var movedSequencesListWithDeletedSequences = new List<IList<CorrelatedSequence>>();
-
             while (true)
             {
                 // recalculate stats and re-filter sequences
@@ -2905,18 +2922,21 @@ namespace OpenXmlPowerTools
                 var movedFromComparisonUnitAtomsUnids = new List<string>();
                 var movedToComparisonUnitAtomsUnids = new List<string>();
 
-                foreach (var cs in movedSequences)
+                for (int i = 0; i < movedSequences.Count; i++)
                 {
+                    var cs = movedSequences[i];
+
                     if (cs.CorrelationStatus == CorrelationStatus.Equal)
                     {
-                        assignMoveFromUnidsToComparisonUnitAtoms(cs.ComparisonUnitArray1, moveUnid);
-                        assignMoveToUnidsToComparisonUnitAtoms(cs.ComparisonUnitArray2, moveUnid);
+                        assignMoveFromUnidToComparisonUnitAtoms(cs.ComparisonUnitArray1, moveUnid, CorrelationStatus.Equal, i);
+                        assignMoveToUnidToComparisonUnitAtoms(cs.ComparisonUnitArray2, moveUnid, CorrelationStatus.Equal, i);
                     }
                     else if (cs.CorrelationStatus == CorrelationStatus.Deleted)
                     {
-                        // assignMoveFromUnidsToComparisonUnitAtoms(cs.ComparisonUnitArray1, moveUnid);
-                        if (!movedSequencesListWithDeletedSequences.Contains(movedSequences))
-                            movedSequencesListWithDeletedSequences.Add(movedSequences);
+                        // assignMoveFromUnidToComparisonUnitAtoms(cs.ComparisonUnitArray1, moveUnid, CorrelationStatus.Deleted, i);
+                    } else if (cs.CorrelationStatus == CorrelationStatus.Inserted)
+                    {
+                        // assignMoveToUnidToComparisonUnitAtoms(cs.ComparisonUnitArray2, moveUnid, CorrelationStatus.Inserted, i);
                     }
 
                     // consider all atoms in the moved sequences as moved (including inserted and deleted atoms inside the moved sequences)
@@ -2966,17 +2986,6 @@ namespace OpenXmlPowerTools
             // Deleted parts inside the moved sequences should be handled in a very special way.
             // Rather than marked as deleted in the source run, they should be moved to the target run
             // and then marked as deleted in the target run.
-
-            foreach (var movedSequences in movedSequencesListWithDeletedSequences)
-            {
-                foreach (var cs in movedSequences)
-                {
-                    if (cs.CorrelationStatus == CorrelationStatus.Deleted)
-                    {
-                        //
-                    }
-                }
-            }
         }
 
         public enum WmlComparerRevisionType
@@ -7057,6 +7066,16 @@ namespace OpenXmlPowerTools
             }
         }
 
+        public abstract ComparisonUnit Clone();
+
+        internal ComparisonUnit CloneInternal(ComparisonUnit target)
+        {
+            target.Contents = Contents.Select(c => c.Clone()).ToList();
+            target.SHA1Hash = SHA1Hash;
+            target.CorrelationStatus = CorrelationStatus;
+            return target;
+        }
+
         public abstract string ToString(int indent);
 
         internal static string ComparisonUnitListToString(ComparisonUnit[] cul)
@@ -7073,6 +7092,11 @@ namespace OpenXmlPowerTools
 
     internal class ComparisonUnitWord : ComparisonUnit
     {
+        internal ComparisonUnitWord()
+        {
+            // used for cloning
+        }
+
         public ComparisonUnitWord(IEnumerable<ComparisonUnitAtom> comparisonUnitAtomList)
         {
             Contents = comparisonUnitAtomList.OfType<ComparisonUnit>().ToList();
@@ -7127,6 +7151,17 @@ namespace OpenXmlPowerTools
             R.pict,
         };
 
+        public override ComparisonUnit Clone()
+        {
+            return CloneInternal(new ComparisonUnitWord());
+        }
+
+        internal ComparisonUnitWord CloneInternal(ComparisonUnitWord target)
+        {
+            base.CloneInternal(target);
+            return target;
+        }
+
         public override string ToString(int indent)
         {
             var sb = new StringBuilder();
@@ -7155,12 +7190,19 @@ namespace OpenXmlPowerTools
         public string MoveFromUnid;
         public string MoveToUnid;
         public CorrelationStatus MoveStatus;
+        // allows to match the content of the moved from and moved to fragments
+        public int MoveMatchIndex;
         public CorrelationStatus MergeStatus;
         public string MergeIterations;
         public bool ChangeGroupStart = false;
         public bool ChangeGroupEnd = false;
         public string ChangeGroupUnid;
         public bool ChangeGroupRequireFormatting = false;
+
+        internal ComparisonUnitAtom() 
+        { 
+            // used for cloning
+        }
 
         public ComparisonUnitAtom(
             XElement contentElement,
@@ -7251,6 +7293,37 @@ namespace OpenXmlPowerTools
         private static XElement GetMergeStatusElementFromAncestors(XElement[] ancestors)
         {
             return ancestors.FirstOrDefault(a => a.Attribute(PtOpenXml.MergeStatus) != null);
+        }
+
+        public override ComparisonUnit Clone()
+        {
+            return CloneInternal(new ComparisonUnitAtom());
+        }
+
+        internal ComparisonUnitAtom CloneInternal(ComparisonUnitAtom target)
+        {
+            base.CloneInternal(target);
+
+            target.AncestorElements = AncestorElements;
+            target.AncestorUnids = AncestorUnids;
+            target.ContentElement = ContentElement;
+            target.ContentElementBefore = ContentElementBefore;
+            target.ComparisonUnitAtomBefore = ComparisonUnitAtomBefore;
+            target.Part = Part;
+            target.RevTrackElement = RevTrackElement;
+
+            target.MoveFromUnid = MoveFromUnid;
+            target.MoveToUnid = MoveToUnid;
+            target.MoveStatus = MoveStatus;
+            target.MoveMatchIndex = MoveMatchIndex;
+            target.MergeStatus = MergeStatus;
+            target.MergeIterations = MergeIterations;
+            target.ChangeGroupStart = ChangeGroupStart;
+            target.ChangeGroupEnd = ChangeGroupEnd;
+            target.ChangeGroupUnid = ChangeGroupUnid;
+            target.ChangeGroupRequireFormatting = ChangeGroupRequireFormatting;
+
+            return target;
         }
 
         public override string ToString(int indent)
@@ -7372,6 +7445,11 @@ namespace OpenXmlPowerTools
         public string CorrelatedSHA1Hash;
         public string StructureSHA1Hash;
 
+        internal ComparisonUnitGroup()
+        {
+            // used for cloning
+        }
+
         public ComparisonUnitGroup(IEnumerable<ComparisonUnit> comparisonUnitList, ComparisonUnitGroupType groupType, int level)
         {
             Contents = comparisonUnitList.ToList();
@@ -7418,6 +7496,23 @@ namespace OpenXmlPowerTools
                 var ca = (ComparisonUnitAtom)tw.Contents.First();
                 return ca;
             }
+        }
+
+        public override ComparisonUnit Clone()
+        {
+            return CloneInternal(new ComparisonUnitGroup());
+        }
+
+        internal ComparisonUnitGroup CloneInternal(ComparisonUnitGroup target)
+        {
+            base.CloneInternal(target);
+
+            target.ComparisonUnitGroupType = ComparisonUnitGroupType;
+            target.Level = Level;
+            target.CorrelatedSHA1Hash = CorrelatedSHA1Hash;
+            target.StructureSHA1Hash = StructureSHA1Hash;
+            
+            return target;
         }
 
         public override string ToString(int indent)
