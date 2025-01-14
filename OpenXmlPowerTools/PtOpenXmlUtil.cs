@@ -5961,6 +5961,7 @@ listSeparator
         public static XName UnidBackup = pt + "UnidBackup";
         public static XName MoveFromUnid = pt + "MoveFromUnid";
         public static XName MoveToUnid = pt + "MoveToUnid";
+        public static XName MoveStatus = pt + "MoveStatus";
         public static XName MergeStatus = pt + "MergeStatus";
         public static XName MergeIterations = pt + "MergeIterations";
         public static XName FormatChanges = pt + "FormatChanges";
