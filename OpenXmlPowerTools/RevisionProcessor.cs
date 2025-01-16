@@ -2297,7 +2297,9 @@ namespace OpenXmlPowerTools
                     return element.Elements();
 
                 if (element.Name == W.sdt)
-                    return element.Elements(W.sdtContent).Elements();
+                    return element.Elements(W.sdtContent).Elements().Select(e => 
+                        CollapseTransform(e)
+                    );
 
                 if (element.Name == W.pPr)
                     return null;
