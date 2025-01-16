@@ -818,7 +818,7 @@ namespace OpenXmlPowerTools
             const string dontConsolidate = "DontConsolidate";
 
             // do not consolidate, if w:ins includes w:del (for example)
-            List<XName> dontConsolidateRunContainersWithChildren = new List<XName> 
+            List<XName> dontConsolidateRunContainersWithChildren = new List<XName>
             {
                 W.ins,
                 W.del,
@@ -846,7 +846,7 @@ namespace OpenXmlPowerTools
                     moveToUnid +
                     rc.Elements(W.r)
                         .Elements(W.rPr)
-                        .Select(rPr => 
+                        .Select(rPr =>
                         {
                             var rPrCopy = new XElement(rPr);
                             RemovePowerToolsMarkup(rPrCopy, true);
@@ -855,7 +855,7 @@ namespace OpenXmlPowerTools
                         .StringConcatenate();
             }
 
-            string getGroupKeyForAdjacentRunContainers(XElement rc, string prefix, XName textName, bool useId = false) 
+            string getGroupKeyForAdjacentRunContainers(XElement rc, string prefix, XName textName, bool useId = false)
             {
                 if (rc.Elements().Where(e => dontConsolidateRunContainersWithChildren.Contains(e.Name)).Any())
                     return dontConsolidate;
@@ -988,7 +988,7 @@ namespace OpenXmlPowerTools
                     {
                         if (g.First().Element(W.t) != null)
                         {
-                            IEnumerable<IEnumerable<XAttribute>> statusAtt =
+                            var statusAtt =
                                 g.Select(r => r.Descendants(W.t).Take(1).Attributes(PtOpenXml.Status));
                             return consolidateGroupedRuns(g, W.t, textValue, xs, statusAtt);
                         }
@@ -1034,7 +1034,7 @@ namespace OpenXmlPowerTools
             return runContainerWithConsolidatedRuns;
         }
 
-        public static XElement RemovePowerToolsMarkup(XElement element, bool removeUnid = false) 
+        public static XElement RemovePowerToolsMarkup(XElement element, bool removeUnid = false)
         {
             element
                 .DescendantsAndSelf()
@@ -5956,7 +5956,7 @@ listSeparator
         public static XName SourceIndex1 = pt + "SourceIndex1";
         public static XName SourceIndex2 = pt + "SourceIndex2";
         // used for MoveFrom and MoveTo detection, to not mutate the original Unid value during additional LCS processings
-        public static XName Unid2 = pt + "Unid2"; 
+        public static XName Unid2 = pt + "Unid2";
         // backups for Unid, to be able to restore the original Unid value after additional LCS processings
         public static XName UnidBackup = pt + "UnidBackup";
         public static XName MoveFromUnid = pt + "MoveFromUnid";

@@ -1059,7 +1059,7 @@ namespace OpenXmlPowerTools
                         var footnoteEndnoteReferencesToAdjust = clone
                             .Descendants()
                             .Where(d => d.Name == W.footnoteReference || d.Name == W.endnoteReference)
-                            .Where(d => d.Attribute(W.customMarkFollows) != null);
+                            .Where(d => (string)d.Attribute(W.customMarkFollows) == "1");
                         foreach (var fnenr in footnoteEndnoteReferencesToAdjust)
                         {
                             var par = fnenr.Parent;
