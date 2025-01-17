@@ -472,6 +472,7 @@ namespace OpenXmlPowerTools
                         .Elements()
                         .GroupAdjacent(e =>
                         {
+                            XElement
                             if (e.Name != W.tbl)
                                 return "";
                             var bidiVisual = e.Elements(W.tblPr).Elements(W.bidiVisual).FirstOrDefault();
