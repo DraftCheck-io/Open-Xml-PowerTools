@@ -122,7 +122,7 @@
             this.cbRemovePermissions.Name = "cbRemovePermissions";
             this.cbRemovePermissions.Size = new System.Drawing.Size(124, 17);
             this.cbRemovePermissions.TabIndex = 7;
-            this.cbRemovePermissions.Text = "Remove StoragePermissions";
+            this.cbRemovePermissions.Text = "Remove Permissions";
             this.cbRemovePermissions.UseVisualStyleBackColor = true;
             //
             // cbRemoveProof
