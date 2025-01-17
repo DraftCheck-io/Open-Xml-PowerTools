@@ -492,7 +492,7 @@ namespace OpenXmlPowerTools
                                         .Elements(W.tblGrid)
                                         .Elements(W.gridCol)
                                         .Attributes(W._w)
-                                        .Select(a => (int)a)
+                                        .Select(a => (int)(float)a)
                                         .Rollup(0, (s, i) => s + i);
                                     return gridCols;
                                 })
@@ -1476,7 +1476,7 @@ namespace OpenXmlPowerTools
         private static XElement FixWidths(XElement tbl)
         {
             var newTbl = new XElement(tbl);
-            var gridLines = tbl.Elements(W.tblGrid).Elements(W.gridCol).Attributes(W._w).Select(w => (int)w).ToArray();
+            var gridLines = tbl.Elements(W.tblGrid).Elements(W.gridCol).Attributes(W._w).Select(w => (int)(float)w).ToArray();
             foreach (var tr in newTbl.Elements(W.tr))
             {
                 int used = 0;
