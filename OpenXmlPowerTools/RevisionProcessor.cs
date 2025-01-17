@@ -472,7 +472,6 @@ namespace OpenXmlPowerTools
                         .Elements()
                         .GroupAdjacent(e =>
                         {
-                            XElement
                             if (e.Name != W.tbl)
                                 return "";
                             var bidiVisual = e.Elements(W.tblPr).Elements(W.bidiVisual).FirstOrDefault();
@@ -1491,7 +1490,7 @@ namespace OpenXmlPowerTools
 
                         if (gridSpan == null)
                             gridSpan = 1;
-                        
+
                         var z = Math.Min(gridLines.Length - 1, lastUsed + (int)gridSpan);
                         int w = gridLines.Where((g, i) => i > lastUsed && i <= z).Sum();
                         tcW.Value = w.ToString();
@@ -2298,7 +2297,7 @@ namespace OpenXmlPowerTools
                     return element.Elements();
 
                 if (element.Name == W.sdt)
-                    return element.Elements(W.sdtContent).Elements().Select(e => 
+                    return element.Elements(W.sdtContent).Elements().Select(e =>
                         CollapseTransform(e)
                     );
 
@@ -2898,7 +2897,7 @@ namespace OpenXmlPowerTools
 }
 
 /// Markup that this code processes:
-/// 
+///
 /// delText
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: MovedText.docx
@@ -2907,7 +2906,7 @@ namespace OpenXmlPowerTools
 ///     Remove these elements.
 ///   Reject:
 ///     Transform to w:t element
-/// 
+///
 /// del (deleted run content)
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Reviewed: zeyad ***************************
@@ -2916,7 +2915,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to w:ins element
 ///     Then Accept
-///   
+///
 /// ins (inserted run content)
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: InsertedParagraphsAndRuns.docx
@@ -2926,7 +2925,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to w:del element, and child w:t transform to w:delText element
 ///     Then Accept
-/// 
+///
 /// ins (inserted paragraph)
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: InsertedParagraphsAndRuns.docx
@@ -2936,7 +2935,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to w:del element
 ///     Then Accept
-///   
+///
 /// del (deleted paragraph mark)
 ///   Method: AcceptDeletedAndMoveFromParagraphMarksTransform
 ///   Sample document: VariousTableRevisions.docx (deleted paragraph mark in paragraph in
@@ -2950,17 +2949,17 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to w:ins element
 ///     Then Accept
-/// 
+///
 /// del (deleted table row)
 ///   Method: AcceptAllOtherRevisionsTransform
-///   Sample document: VariousTableRevisions.docx 
+///   Sample document: VariousTableRevisions.docx
 ///   Reviewed: zeyad ***************************
 ///   Semantics:
 ///     Match w:tr/w:trPr/w:del, remove w:tr.
 ///   Reject:
 ///     Transform to w:ins
 ///     Then Accept
-/// 
+///
 /// ins (inserted table row)
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: VariousTableRevisions.docx
@@ -2970,7 +2969,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to w:del
 ///     Then Accept
-/// 
+///
 /// del (deleted math control character)
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: DeletedMathControlCharacter.docx
@@ -2980,7 +2979,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to w:ins
 ///     Then Accept
-/// 
+///
 /// ins (inserted math control character)
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: InsertedMathControlCharacter.docx
@@ -2990,7 +2989,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to w:del
 ///     Then Accept
-///   
+///
 /// moveTo (move destination paragraph mark)
 ///   Method: AcceptMoveFromMoveToTransform
 ///   Sample document: MovedText.docx
@@ -3000,7 +2999,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to moveFrom
 ///     Then Accept
-///   
+///
 /// moveTo (move destination run content)
 ///   Method: AcceptMoveFromMoveToTransform
 ///   Sample document: MovedText.docx
@@ -3010,7 +3009,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to moveFrom
 ///     Then Accept
-/// 
+///
 /// moveFrom (move source paragraph mark)
 ///   Methods: AcceptDeletedAndMoveFromParagraphMarksTransform, AcceptParagraphEndTagsInMoveFromTransform
 ///   Sample document: MovedText.docx
@@ -3024,7 +3023,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to moveTo
 ///     Then Accept
-/// 
+///
 /// moveFrom (move source run content)
 ///   Method: AcceptMoveFromMoveToTransform
 ///   Sample document: MovedText.docx
@@ -3034,7 +3033,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to moveTo
 ///     Then Accept
-/// 
+///
 /// moveFromRangeStart
 /// moveFromRangeEnd
 ///   Method: AcceptMoveFromRanges
@@ -3045,7 +3044,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to moveToRangeStart, moveToRangeEnd
 ///     Then Accept
-/// 
+///
 /// moveToRangeStart
 /// moveToRangeEnd
 ///   Method: AcceptAllOtherRevisionsTransform
@@ -3056,7 +3055,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to moveFromRangeStart, moveFromRangeEnd
 ///     Then Accept
-/// 
+///
 /// customXmlDelRangeStart
 /// customXmlDelRangeEnd
 /// customXmlMoveFromRangeStart
@@ -3069,7 +3068,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to customXmlInsRangeStart, customXmlInsRangeEnd, customXmlMoveToRangeStart, customXmlMoveToRangeEnd
 ///     Then Accept
-///   
+///
 /// customXmlInsRangeStart
 /// customXmlInsRangeEnd
 /// customXmlMoveToRangeStart
@@ -3081,7 +3080,7 @@ namespace OpenXmlPowerTools
 ///   Reject:
 ///     Transform to customXmlDelRangeStart, customXmlDelRangeEnd, customXmlMoveFromRangeStart, customXmlMoveFromRangeEnd
 ///     Then Accept
-///   
+///
 /// delInstrText (deleted field code)
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: NumberingParagraphPropertiesChange.docx
@@ -3092,7 +3091,7 @@ namespace OpenXmlPowerTools
 ///     Transform to instrText
 ///     Then Accept
 ///     Note that instrText must be transformed to delInstrText when in a w:ins, in the same fashion that w:t must be transformed to w:delText when in w:ins
-/// 
+///
 /// ins (inserted numbering properties)
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: InsertedNumberingProperties.docx
@@ -3101,16 +3100,16 @@ namespace OpenXmlPowerTools
 ///     Remove these elements.
 ///   Reject
 ///     Remove the containing w:numPr
-///     
+///
 /// pPrChange (revision information for paragraph properties)
 ///   Method: AcceptAllOtherRevisionsTransform
-///   Sample document: ParagraphAndRunPropertyRevisions.docx 
+///   Sample document: ParagraphAndRunPropertyRevisions.docx
 ///   Reviewed: zeyad ***************************
 ///   Semantics:
 ///     Remove these elements.
 ///   Reject:
 ///     Replace pPr with the pPr in pPrChange
-/// 
+///
 /// rPrChange (revision information for run properties)
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: ParagraphAndRunPropertyRevisions.docx
@@ -3120,33 +3119,33 @@ namespace OpenXmlPowerTools
 ///     Remove these elements.
 ///   Reject:
 ///     Replace rPr with the rPr in rPrChange
-///   
+///
 /// rPrChange (revision information for run properties on the paragraph mark)
 ///   Method: AcceptAllOtherRevisionsTransform
-///   Sample document: ParagraphAndRunPropertyRevisions.docx 
+///   Sample document: ParagraphAndRunPropertyRevisions.docx
 ///   Reviewed: zeyad ***************************
 ///   Semantics:
 ///     Remove these elements.
 ///   Reject:
 ///     Replace rPr with the rPr in rPrChange.
-/// 
+///
 /// numberingChange (previous numbering field properties)
 ///   Method: AcceptAllOtherRevisionsTransform
-///   Sample document: NumberingFieldPropertiesChange.docx 
+///   Sample document: NumberingFieldPropertiesChange.docx
 ///   Semantics:
 ///     Remove these elements.
 ///   Reject:
 ///     Remove these elements.
 ///     These are there for numbering created via fields, and are not important.
-/// 
+///
 /// numberingChange (previous paragraph numbering properties)
 ///   Method: AcceptAllOtherRevisionsTransform
-///   Sample document: NumberingFieldPropertiesChange.docx 
+///   Sample document: NumberingFieldPropertiesChange.docx
 ///   Semantics:
 ///     Remove these elements.
 ///   Reject:
 ///     Remove these elements.
-/// 
+///
 /// sectPrChange
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: SectionPropertiesChange.docx
@@ -3155,7 +3154,7 @@ namespace OpenXmlPowerTools
 ///     Remove these elements.
 ///   Reject:
 ///     Replace sectPr with the sectPr in sectPrChange
-///   
+///
 /// tblGridChange
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: TableGridChange.docx
@@ -3165,7 +3164,7 @@ namespace OpenXmlPowerTools
 ///     Remove these elements.
 ///   Reject:
 ///     Replace tblGrid with the tblGrid in tblGridChange
-/// 
+///
 /// tblPrChange
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: TableGridChange.docx
@@ -3175,7 +3174,7 @@ namespace OpenXmlPowerTools
 ///     Remove these elements.
 ///   Reject:
 ///     Replace tblPr with the tblPr in tblPrChange
-///   
+///
 /// tblPrExChange
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: VariousTableRevisions.docx
@@ -3184,7 +3183,7 @@ namespace OpenXmlPowerTools
 ///     Remove these elements.
 ///   Reject:
 ///     Replace tblPrEx with the tblPrEx in tblPrExChange
-///   
+///
 /// tcPrChange
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: TableGridChange.docx
@@ -3194,7 +3193,7 @@ namespace OpenXmlPowerTools
 ///     Remove these elements.
 ///   Reject:
 ///     Replace tcPr with the tcPr in tcPrChange
-///   
+///
 /// trPrChange
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: VariousTableRevisions.docx
@@ -3203,7 +3202,7 @@ namespace OpenXmlPowerTools
 ///     Remove these elements.
 ///   Reject:
 ///     Replace trPr with the trPr in trPrChange
-/// 
+///
 /// celDel
 ///   Method: AcceptDeletedCellsTransform
 ///   Sample document: HorizontallyMergedCells.docx
@@ -3213,7 +3212,7 @@ namespace OpenXmlPowerTools
 ///       Increase gridSpan by the number of deleted cells that are removed.
 ///   Reject:
 ///     Remove this element
-/// 
+///
 /// celIns
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: HorizontallyMergedCells11.docx
@@ -3221,7 +3220,7 @@ namespace OpenXmlPowerTools
 ///     Remove these elements.
 ///   Reject:
 ///     If a w:tc contains w:tcPr/w:cellIns, then remove the cell
-///   
+///
 /// cellMerge
 ///   Method: AcceptAllOtherRevisionsTransform
 ///   Sample document: MergedCell.docx
@@ -3230,7 +3229,7 @@ namespace OpenXmlPowerTools
 ///       to <w:vMerge w:val="restart"/>.
 ///     Transform cellMerge with a parent of tcPr, with attribute w:vMerge="cont"
 ///       to <w:vMerge w:val="continue"/>
-/// 
+///
 /// The following items need to be addressed in a future release:
 /// - inserted run inside deleted paragraph - moveTo is same as insert
 /// - must increase w:val attribute of the w:gridSpan element of the
