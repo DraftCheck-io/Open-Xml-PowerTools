@@ -1353,10 +1353,10 @@ namespace OpenXmlPowerTools
         private static void MarkContentAsDeletedOrInserted(XDocument newXDoc, WmlComparerInternalSettings internalSettings)
         {
             var newRoot = MarkContentAsDeletedOrInsertedTransform(newXDoc.Root, internalSettings);
-            
+
             if (internalSettings.ComparerSettings.DetectContentMoves)
                 MarkMoveFromAndMoveToRanges(newRoot, internalSettings);
-                
+
             newXDoc.Root.ReplaceWith(newRoot);
         }
 
@@ -1454,7 +1454,7 @@ namespace OpenXmlPowerTools
                     {
                         // moveStatus = "Inserted" means: element was not actually moved, but inserted later inside the moved range
                         // moveStatus = "Deleted" means: element was not actually moved, but deleted before range was moved
-                        var elName = (moveStatus == "Inserted") 
+                        var elName = (moveStatus == "Inserted")
                             ? W.ins
                             : (moveStatus == "Deleted")
                                 ? W.del
@@ -5869,6 +5869,11 @@ namespace OpenXmlPowerTools
 
         private static ComparisonUnit[] GetComparisonUnitList(ComparisonUnitAtom[] comparisonUnitAtomList, WmlComparerInternalSettings internalSettings)
         {
+            bool isContentAtomInsertedDuringMerge (ComparisonUnitAtom cu)
+            {
+                return internalSettings.MergeMode && cu.MergeStatus == CorrelationStatus.Inserted;
+            }
+
             var settings = internalSettings.ComparerSettings;
 
             var seed = new Atgbw()
@@ -5903,7 +5908,8 @@ namespace OpenXmlPowerTools
                                 if (next.ContentElement.Name == W.t && char.IsDigit(next.ContentElement.Value[0]))
                                     afterIsDigit = true;
                             }
-                            if (beforeIsDigit || afterIsDigit)
+                            // punctuation terminates words, unless it's between numbers
+                            if (beforeIsDigit && afterIsDigit)
                             {
                                 key = nextIndex;
                             }
@@ -5920,7 +5926,7 @@ namespace OpenXmlPowerTools
                             key = nextIndex;
                             nextIndex++;
                         }
-                        else if (internalSettings.MergeMode && sr.MergeStatus == CorrelationStatus.Inserted)
+                        else if (isContentAtomInsertedDuringMerge(sr))
                         {
                             // DraftCheck: text fragments, inserted in the Merge mode, should be treated as a separate words
                             if (prevAtgbw.ComparisonUnitAtomMember?.MergeStatus != CorrelationStatus.Inserted)
@@ -6779,8 +6785,8 @@ namespace OpenXmlPowerTools
         public string ChangeGroupUnid;
         public bool ChangeGroupRequireFormatting = false;
 
-        internal ComparisonUnitAtom() 
-        { 
+        internal ComparisonUnitAtom()
+        {
             // used for cloning
         }
 
@@ -7091,7 +7097,7 @@ namespace OpenXmlPowerTools
             target.Level = Level;
             target.CorrelatedSHA1Hash = CorrelatedSHA1Hash;
             target.StructureSHA1Hash = StructureSHA1Hash;
-            
+
             return target;
         }
 
