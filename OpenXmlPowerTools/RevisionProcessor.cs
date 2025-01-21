@@ -2294,7 +2294,7 @@ namespace OpenXmlPowerTools
                     element.Name == W.ins ||
                     element.Name == W.moveTo ||
                     element.Name == W.smartTag)
-                    return element.Elements();
+                    return element.Elements().Select(n => CollapseTransform(n));
 
                 if (element.Name == W.sdt)
                     return element.Elements(W.sdtContent).Elements().Select(e =>
