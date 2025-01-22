@@ -4835,22 +4835,25 @@ namespace OpenXmlPowerTools
                 }
             }
 
-            bool isOnlyParagraphMark = false;
             if (currentLongestCommonSequenceLength == 1)
             {
                 var firstCommon = cul1[currentI1];
 
-                var firstCommonWord = firstCommon as ComparisonUnitWord;
-                if (firstCommonWord != null)
+                if (firstCommon is ComparisonUnitWord || firstCommon is ComparisonUnitGroup)
                 {
-                    // if the word contains more than one atom, then not a paragraph mark
-                    if (firstCommonWord.Contents.Count() == 1)
+                    // if the group/word contains more than one atom, then not a paragraph mark
+                    var firstCommonAtoms = firstCommon.DescendantContentAtoms();
+                    if (firstCommonAtoms.Count() == 1)
                     {
-                        var firstCommonAtom = firstCommonWord.Contents.First() as ComparisonUnitAtom;
+                        var firstCommonAtom = firstCommonAtoms.First();
                         if (firstCommonAtom != null)
                         {
                             if (firstCommonAtom.ContentElement.Name == W.pPr)
-                                isOnlyParagraphMark = true;
+                            {
+                                currentI1 = -1;
+                                currentI2 = -1;
+                                currentLongestCommonSequenceLength = 0;
+                            }
                         }
                     }
                 }
@@ -4912,7 +4915,7 @@ namespace OpenXmlPowerTools
 
             // if we are only looking at text, and if the longest common subsequence is less than 15% of the whole, then forget it,
             // don't find that LCS.
-            if (!isOnlyParagraphMark && currentLongestCommonSequenceLength > 0)
+            if (currentLongestCommonSequenceLength > 0)
             {
                 var anyButWord1 = cul1.Any(cu => (cu as ComparisonUnitWord) == null);
                 var anyButWord2 = cul2.Any(cu => (cu as ComparisonUnitWord) == null);

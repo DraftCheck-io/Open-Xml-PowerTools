@@ -57,18 +57,15 @@ namespace OpenXmlPowerTools
 
         private static void AssignIndexesToAllRunElements(XElement contentParent)
         {
-            var content = contentParent.Descendants();
+            var content = contentParent.Descendants(W.r);
             var rCount = 0;
             foreach (var d in content)
             {
-                if (d.Name == W.r)
-                {
-                    if (d.Attribute(PtOpenXml.Index) == null) {
-                        var newAttr = new XAttribute(PtOpenXml.Index, rCount.ToString());
-                        d.Add(newAttr);
-                    }
-                    rCount++;
+                if (d.Attribute(PtOpenXml.Index) == null) {
+                    var newAttr = new XAttribute(PtOpenXml.Index, rCount.ToString());
+                    d.Add(newAttr);
                 }
+                rCount++;
             }
         }
 
