@@ -4331,11 +4331,25 @@ namespace OpenXmlPowerTools
 
         private static List<CorrelatedSequence> DetectUnrelatedSources(ComparisonUnit[] cu1, ComparisonUnit[] cu2, WmlComparerInternalSettings internalSettings)
         {
+            List<string> getUniqueComparisonUnitGroupsHashes(ComparisonUnit[] cu)
+            {
+                return cu
+                    .OfType<ComparisonUnitGroup>()
+                    // check if found units are not just empty paragraphs
+                    .Where(g => {
+                        var atoms = g.DescendantContentAtoms();
+                        return atoms.Count() > 1 || (atoms.Count() == 1 && atoms.First().ContentElement.Name != W.pPr);
+                    })
+                    .Select(g => g.SHA1Hash)
+                    .Distinct()
+                    .ToList();
+            }
+
             if (cu1.OfType<ComparisonUnitGroup>().Take(4).Count() > 3 &&
                 cu2.OfType<ComparisonUnitGroup>().Take(4).Count() > 3)
             {
-                var list1 = cu1.OfType<ComparisonUnitGroup>().Select(g => g.SHA1Hash).ToList();
-                var list2 = cu2.OfType<ComparisonUnitGroup>().Select(g => g.SHA1Hash).ToList();
+                var list1 = getUniqueComparisonUnitGroupsHashes(cu1);
+                var list2 = getUniqueComparisonUnitGroupsHashes(cu2);
                 var intersect = list1.Intersect(list2).ToList();
 
                 if (intersect.Count() == 0)
@@ -4845,7 +4859,7 @@ namespace OpenXmlPowerTools
                     var firstCommonAtoms = firstCommon.DescendantContentAtoms();
                     if (firstCommonAtoms.Count() == 1)
                     {
-                        var firstCommonAtom = firstCommonAtoms.First();
+                        var firstCommonAtom = firstCommonAtoms.FirstOrDefault();
                         if (firstCommonAtom != null)
                         {
                             if (firstCommonAtom.ContentElement.Name == W.pPr)
