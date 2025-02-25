@@ -4821,6 +4821,11 @@ namespace OpenXmlPowerTools
 
                 var firstCommon = cul1[currentI1];
 
+                if (firstCommon is ComparisonUnitAtom)
+                {
+                    Console.WriteLine("This should never happen");
+                }
+
                 var firstCommonWord = firstCommon as ComparisonUnitWord;
                 if (firstCommonWord == null)
                     break;
@@ -4849,13 +4854,14 @@ namespace OpenXmlPowerTools
                 }
             }
 
+            bool isOnlyParagraphMark = false;
             if (currentLongestCommonSequenceLength == 1)
             {
                 var firstCommon = cul1[currentI1];
 
                 if (firstCommon is ComparisonUnitWord || firstCommon is ComparisonUnitGroup)
                 {
-                    // if the group/word contains more than one atom, then not a paragraph mark
+                    // if the word contains more than one atom, then not a paragraph mark
                     var firstCommonAtoms = firstCommon.DescendantContentAtoms();
                     if (firstCommonAtoms.Count() == 1)
                     {
@@ -4863,11 +4869,10 @@ namespace OpenXmlPowerTools
                         if (firstCommonAtom != null)
                         {
                             if (firstCommonAtom.ContentElement.Name == W.pPr)
-                            {
+                                isOnlyParagraphMark = true;
                                 currentI1 = -1;
                                 currentI2 = -1;
                                 currentLongestCommonSequenceLength = 0;
-                            }
                         }
                     }
                 }
@@ -4888,6 +4893,27 @@ namespace OpenXmlPowerTools
                 }
             }
 
+            // checks if this word is not just a word separatator actually
+            bool isComparisonUnitWordNotWordSplitChars(ComparisonUnitWord cs) 
+            {
+                var otherThanText = cs.DescendantContentAtoms().Any(dca => dca.ContentElement.Name != W.t);
+                if (otherThanText)
+                    return true;
+                var otherThanWordSplit = cs
+                    .DescendantContentAtoms()
+                    .Any(dca =>
+                    {
+                        var charValue = dca.ContentElement.Value;
+                        var isWordSplit = ((int)charValue[0] >= 0x4e00 && (int)charValue[0] <= 0x9fff);
+                        if (! isWordSplit)
+                            isWordSplit = settings.WordSeparators.Contains(charValue[0]);
+                        if (isWordSplit)
+                            return false;
+                        return true;
+                    });
+                return otherThanWordSplit;
+            }
+
             // don't match only word break characters
             if (currentLongestCommonSequenceLength > 0 && currentLongestCommonSequenceLength <= 3)
             {
@@ -4899,25 +4925,7 @@ namespace OpenXmlPowerTools
                 {
                     var contentOtherThanWordSplitChars = commonSequence
                         .Cast<ComparisonUnitWord>()
-                        .Any(cs =>
-                        {
-                            var otherThanText = cs.DescendantContentAtoms().Any(dca => dca.ContentElement.Name != W.t);
-                            if (otherThanText)
-                                return true;
-                            var otherThanWordSplit = cs
-                                .DescendantContentAtoms()
-                                .Any(dca =>
-                                {
-                                    var charValue = dca.ContentElement.Value;
-                                    var isWordSplit = ((int)charValue[0] >= 0x4e00 && (int)charValue[0] <= 0x9fff);
-                                    if (! isWordSplit)
-                                        isWordSplit = settings.WordSeparators.Contains(charValue[0]);
-                                    if (isWordSplit)
-                                        return false;
-                                    return true;
-                                });
-                            return otherThanWordSplit;
-                        });
+                        .Any(cs => isComparisonUnitWordNotWordSplitChars(cs));
                     if (!contentOtherThanWordSplitChars)
                     {
                         currentI1 = -1;
@@ -4929,14 +4937,27 @@ namespace OpenXmlPowerTools
 
             // if we are only looking at text, and if the longest common subsequence is less than 15% of the whole, then forget it,
             // don't find that LCS.
-            if (currentLongestCommonSequenceLength > 0)
+            if (!isOnlyParagraphMark && currentLongestCommonSequenceLength > 0)
             {
                 var anyButWord1 = cul1.Any(cu => (cu as ComparisonUnitWord) == null);
                 var anyButWord2 = cul2.Any(cu => (cu as ComparisonUnitWord) == null);
                 if (!anyButWord1 && !anyButWord2)
                 {
-                    var maxLen = Math.Max(cul1.Length, cul2.Length);
-                    if (((double)currentLongestCommonSequenceLength / (double)maxLen) < settings.DetailThreshold)
+                    // take into account just actual words (not word separators/spaces) when calculating a matching percentage
+                    // this allows to ignore the case when a lot of spaces are added or removed into the paragraph
+                    var commonSequence = cul1.Skip(currentI1).Take(currentLongestCommonSequenceLength).ToArray();
+                    var commonWordsSequenceLength = commonSequence
+                        .Cast<ComparisonUnitWord>()
+                        .Count(cs => isComparisonUnitWordNotWordSplitChars(cs));
+                    var wordsSequenceLegth1 = cul1
+                        .OfType<ComparisonUnitWord>()
+                        .Count(cs => isComparisonUnitWordNotWordSplitChars(cs));
+                    var wordsSequenceLegth2 = cul2
+                        .OfType<ComparisonUnitWord>()
+                        .Count(cs => isComparisonUnitWordNotWordSplitChars(cs));
+
+                    var maxLen = Math.Max(wordsSequenceLegth1, wordsSequenceLegth2);
+                    if (((double)commonWordsSequenceLength / (double)maxLen) < settings.DetailThreshold)
                     {
                         currentI1 = -1;
                         currentI2 = -1;

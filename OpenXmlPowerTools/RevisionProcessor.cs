@@ -712,7 +712,7 @@ namespace OpenXmlPowerTools
                 {
                     var newRri = new ReverseRevisionsInfo() { InInsert = true };
                     return new XElement(W.del,
-                        element.Nodes().Select(n => ReverseRevisionsTransform(n, rri)));
+                        element.Nodes().Select(n => ReverseRevisionsTransform(n, newRri)));
                 }
 
                 ////////////////////////////////////////////////////////////////////////////////////
