@@ -4821,11 +4821,6 @@ namespace OpenXmlPowerTools
 
                 var firstCommon = cul1[currentI1];
 
-                if (firstCommon is ComparisonUnitAtom)
-                {
-                    Console.WriteLine("This should never happen");
-                }
-
                 var firstCommonWord = firstCommon as ComparisonUnitWord;
                 if (firstCommonWord == null)
                     break;
