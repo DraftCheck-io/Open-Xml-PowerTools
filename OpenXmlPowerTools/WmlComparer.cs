@@ -4855,7 +4855,7 @@ namespace OpenXmlPowerTools
 
                 if (firstCommon is ComparisonUnitWord || firstCommon is ComparisonUnitGroup)
                 {
-                    // if the word contains more than one atom, then not a paragraph mark
+                    // if the group/word contains more than one atom, then not a paragraph mark
                     var firstCommonAtoms = firstCommon.DescendantContentAtoms();
                     if (firstCommonAtoms.Count() == 1)
                     {
@@ -4863,9 +4863,11 @@ namespace OpenXmlPowerTools
                         if (firstCommonAtom != null)
                         {
                             if (firstCommonAtom.ContentElement.Name == W.pPr)
+                            {
                                 currentI1 = -1;
                                 currentI2 = -1;
                                 currentLongestCommonSequenceLength = 0;
+                            }
                         }
                     }
                 }
