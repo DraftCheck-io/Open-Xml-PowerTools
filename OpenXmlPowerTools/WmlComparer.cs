@@ -54,7 +54,8 @@ namespace OpenXmlPowerTools
         public string AuthorForOriginal = "Author";
         public string AuthorForRevisions = "Open-Xml-PowerTools";
         public string DateTimeForRevisions = DateTime.Now.ToString("o");
-        public double DetailThreshold = 0; // 0.15;
+        public int LengthThreshold = 5;
+        public double PercentThreshold = 0.15;
         public bool CaseInsensitive = false;
         public bool ConflateBreakingAndNonbreakingSpaces = true;
         public CultureInfo CultureInfo = null;
@@ -3157,7 +3158,10 @@ namespace OpenXmlPowerTools
                     .TakeWhile(pair => pair.Pu1.SHA1Hash == pair.Pu2.SHA1Hash)
                     .Count();
 
-            if (countCommonAtBeginning != 0 && ((double)countCommonAtBeginning / (double)lengthToCompare) < settings.DetailThreshold)
+            if (countCommonAtBeginning != 0 && 
+                countCommonAtBeginning < settings.LengthThreshold &&
+                ((double)countCommonAtBeginning / (double)lengthToCompare) < settings.PercentThreshold
+            )
                 countCommonAtBeginning = 0;
 
             if (countCommonAtBeginning != 0)
@@ -3377,7 +3381,12 @@ namespace OpenXmlPowerTools
                 }
             }
 
-            if (!isOnlyParagraphMark && countCommonAtEnd != 0 && ((double)countCommonAtEnd / (double)lengthToCompare) < settings.DetailThreshold)
+            if (
+                !isOnlyParagraphMark 
+                && countCommonAtEnd != 0
+                && countCommonAtEnd < settings.LengthThreshold 
+                && ((double)countCommonAtEnd / (double)lengthToCompare) < settings.PercentThreshold
+            )
                 countCommonAtEnd = 0;
 
             // If the following test is not there, the test below sets the end paragraph mark of the entire document equal to the end paragraph
@@ -4939,7 +4948,7 @@ namespace OpenXmlPowerTools
             // When it finds the matched words sequence, it calculates the Threshold percentage against the total number of words
             // from all flatten paragraphs. Thus the percentage can appear significantly less.
 
-            if (currentLongestCommonSequenceLength > 0 && settings.DetailThreshold > 0)
+            if (currentLongestCommonSequenceLength > 0 && settings.PercentThreshold > 0)
             {
                 var anyButWord1 = cul1.Any(cu => (cu as ComparisonUnitWord) == null);
                 var anyButWord2 = cul2.Any(cu => (cu as ComparisonUnitWord) == null);
@@ -4951,15 +4960,17 @@ namespace OpenXmlPowerTools
                     var commonWordsSequenceLength = commonSequence
                         .Cast<ComparisonUnitWord>()
                         .Count(cs => isComparisonUnitWordNotWordSplitChars(cs));
-                    var wordsSequenceLegth1 = cul1
+                    var wordsSequenceLength1 = cul1
                         .OfType<ComparisonUnitWord>()
                         .Count(cs => isComparisonUnitWordNotWordSplitChars(cs));
-                    var wordsSequenceLegth2 = cul2
+                    var wordsSequenceLength2 = cul2
                         .OfType<ComparisonUnitWord>()
                         .Count(cs => isComparisonUnitWordNotWordSplitChars(cs));
 
-                    var maxLen = Math.Max(wordsSequenceLegth1, wordsSequenceLegth2);
-                    if (((double)commonWordsSequenceLength / (double)maxLen) < settings.DetailThreshold)
+                    var maxLen = Math.Max(wordsSequenceLength1, wordsSequenceLength2);
+                    if (commonWordsSequenceLength < settings.LengthThreshold &&
+                        ((double)commonWordsSequenceLength / (double)maxLen) < settings.PercentThreshold
+                    )
                     {
                         currentI1 = -1;
                         currentI2 = -1;
