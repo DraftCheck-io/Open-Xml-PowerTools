@@ -54,7 +54,7 @@ namespace OpenXmlPowerTools
         public string AuthorForOriginal = "Author";
         public string AuthorForRevisions = "Open-Xml-PowerTools";
         public string DateTimeForRevisions = DateTime.Now.ToString("o");
-        public int LengthThreshold = 5;
+        public int LengthThreshold = 3;
         public double PercentThreshold = 0.15;
         public bool CaseInsensitive = false;
         public bool ConflateBreakingAndNonbreakingSpaces = true;
@@ -66,7 +66,7 @@ namespace OpenXmlPowerTools
         public WmlComparerSettings()
         {
             // note that , and . are processed explicitly to handle cases where they are in a number or word
-            WordSeparators = new[] { ' ', '-', ')', '(', ';', ',', '（', '）', '，', '、', '、', '，', '；', '。', '：', '的', }; // todo need to fix this for complete list
+            WordSeparators = new[] { ' ', '-', ')', '(', ';', ',', ':', '!', '?', '[', ']', '（', '）', '，', '、', '、', '，', '；', '。', '：', '的', }; // todo need to fix this for complete list
         }
 
         public bool DetectContentMoves = true;
