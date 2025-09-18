@@ -769,8 +769,12 @@ namespace OpenXmlPowerTools
 
             correlatedSequence = DetectUnrelatedSources(cus1, cus2, internalSettings);
 
+            bool sourcesAreUnrelated = false;
+
             if (correlatedSequence == null)
                 correlatedSequence = Lcs(cus1, cus2, internalSettings);
+            else
+                sourcesAreUnrelated = true;
 
             if (s_False)
             {
@@ -786,7 +790,7 @@ namespace OpenXmlPowerTools
             MarkRowsAsDeletedOrInserted(internalSettings, correlatedSequence);
 
             // DraftCheck
-            if (internalSettings.ResolveTrackingChanges && settings.DetectContentMoves)
+            if (!sourcesAreUnrelated && internalSettings.ResolveTrackingChanges && settings.DetectContentMoves)
                 DetectMovedContentInCorrelatedSequence(correlatedSequence, internalSettings);
 
             if (s_False)
