@@ -414,9 +414,19 @@ namespace OpenXmlPowerTools
             return node;
         }
 
+        public static WmlDocument ReverseRevisions(WmlDocument document)
+        {
+            using (OpenXmlMemoryStreamDocument streamDoc = new OpenXmlMemoryStreamDocument(document))
+            {
+                using (WordprocessingDocument doc = streamDoc.GetWordprocessingDocument())
+                {
+                    ReverseRevisions(doc);
+                }
+                return streamDoc.GetModifiedWmlDocument();
+            }
+        }
 
-
-        private static void ReverseRevisions(WordprocessingDocument doc)
+        public static void ReverseRevisions(WordprocessingDocument doc)
         {
             ReverseRevisionsForPart(doc.MainDocumentPart);
             foreach (var part in doc.MainDocumentPart.HeaderParts)
@@ -2826,11 +2836,19 @@ namespace OpenXmlPowerTools
 
     public partial class WmlDocument : OpenXmlPowerToolsDocument
     {
-        public WmlDocument AcceptRevisions(WmlDocument document)
+        public static WmlDocument AcceptRevisions(WmlDocument document)
         {
             return RevisionProcessor.AcceptRevisions(document);
         }
-        public bool HasTrackedRevisions(WmlDocument document)
+        public static WmlDocument RejectRevisions(WmlDocument document)
+        {
+            return RevisionProcessor.RejectRevisions(document);
+        }
+        public static WmlDocument ReverseRevisions(WmlDocument document)
+        {
+            return RevisionProcessor.ReverseRevisions(document);
+        }
+        public static bool HasTrackedRevisions(WmlDocument document)
         {
             return RevisionProcessor.HasTrackedRevisions(document);
         }
